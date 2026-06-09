@@ -32,6 +32,18 @@ type LanguagePack = {
   videoTagConcat: string;
   videoTagRemux: string;
   videoTagMetadata: string;
+  audioTitle: string;
+  audioDesc: string;
+  audioTagConvert: string;
+  audioTagCut: string;
+  audioTagMetadata: string;
+  audioTagWaveform: string;
+  pdfTitle: string;
+  pdfDesc: string;
+  pdfTagUpload: string;
+  pdfTagSort: string;
+  pdfTagLayout: string;
+  pdfTagDownload: string;
   resourceTitle: string;
   resourceDesc: string;
   resourceModeCache: string;
@@ -51,6 +63,7 @@ type LanguagePack = {
   resourceCacheUnsupported: string;
   ffmpegCoreJsDesc: string;
   ffmpegCoreWasmDesc: string;
+  pdfLibDesc: string;
   emptyState: string;
   footer: string;
 };
@@ -99,8 +112,20 @@ const LANGUAGE_TABLE: Record<SupportedLanguage, LanguagePack> = {
     videoTagConcat: "拼接",
     videoTagRemux: "转封装",
     videoTagMetadata: "元数据",
+    audioTitle: "音频处理",
+    audioDesc: "基于本地 FFmpeg.wasm 执行格式转换、无损剪切、转封装、元数据编辑、波形预览和音量增益。",
+    audioTagConvert: "格式转换",
+    audioTagCut: "裁剪片段",
+    audioTagMetadata: "元数据编辑",
+    audioTagWaveform: "波形预览",
+    pdfTitle: "图片转 PDF",
+    pdfDesc: "将多张 JPG/PNG 图片按顺序转换为 PDF，支持页面尺寸、适配方式、边距和文件名设置。",
+    pdfTagUpload: "多图上传",
+    pdfTagSort: "拖拽排序",
+    pdfTagLayout: "页面布局",
+    pdfTagDownload: "下载 PDF",
     resourceTitle: "资源管理",
-    resourceDesc: "为后续音视频处理工具准备本地运行资源。首次导入或下载到浏览器缓存后，工具会自动从缓存加载。",
+    resourceDesc: "为需要额外运行库的工具准备本地资源。首次导入或下载到浏览器缓存后，工具会自动从缓存加载。",
     resourceModeCache: "导入到浏览器缓存",
     refreshResources: "刷新检查",
     resourcePending: "待检查",
@@ -118,6 +143,7 @@ const LANGUAGE_TABLE: Record<SupportedLanguage, LanguagePack> = {
     resourceCacheUnsupported: "当前浏览器不支持 IndexedDB 缓存导入。",
     ffmpegCoreJsDesc: "FFmpeg.wasm 单线程核心脚本，供后续音视频处理工具加载。",
     ffmpegCoreWasmDesc: "FFmpeg.wasm 单线程 WebAssembly 二进制文件，体积较大，建议本地缓存。",
+    pdfLibDesc: "pdf-lib UMD 静态脚本，用于在浏览器本地生成 PDF。",
     emptyState: "没有找到匹配的工具。",
     footer: "所有工具均为静态页面。直接双击入口文件或部署到任意静态站点即可使用。"
   },
@@ -153,8 +179,20 @@ const LANGUAGE_TABLE: Record<SupportedLanguage, LanguagePack> = {
     videoTagConcat: "Stitch",
     videoTagRemux: "Remux",
     videoTagMetadata: "Metadata",
+    audioTitle: "Audio Processing",
+    audioDesc: "Use local FFmpeg.wasm for conversion, lossless trimming, remuxing, metadata editing, waveform preview, and gain processing.",
+    audioTagConvert: "Convert",
+    audioTagCut: "Trim",
+    audioTagMetadata: "Metadata",
+    audioTagWaveform: "Waveform",
+    pdfTitle: "Images to PDF",
+    pdfDesc: "Convert multiple JPG/PNG images into a PDF with ordering, page size, fitting, margins, and output name controls.",
+    pdfTagUpload: "Multi-upload",
+    pdfTagSort: "Drag sort",
+    pdfTagLayout: "Page layout",
+    pdfTagDownload: "PDF download",
     resourceTitle: "Resource Management",
-    resourceDesc: "Prepare local runtime assets for audio and video tools. Import or download them into browser cache once, then tools load them automatically.",
+    resourceDesc: "Prepare local runtime assets for tools that need extra libraries. Import or download them into browser cache once, then tools load them automatically.",
     resourceModeCache: "Import to browser cache",
     refreshResources: "Refresh check",
     resourcePending: "Pending",
@@ -172,6 +210,7 @@ const LANGUAGE_TABLE: Record<SupportedLanguage, LanguagePack> = {
     resourceCacheUnsupported: "This browser does not support IndexedDB cache imports.",
     ffmpegCoreJsDesc: "FFmpeg.wasm single-thread core script for future audio and video tools.",
     ffmpegCoreWasmDesc: "FFmpeg.wasm single-thread WebAssembly binary. It is large, so local caching is recommended.",
+    pdfLibDesc: "pdf-lib UMD static script for generating PDFs locally in the browser.",
     emptyState: "No matching tools found.",
     footer: "All tools are static pages. Use them by opening the entry file directly or deploying to any static host."
   }
@@ -195,6 +234,12 @@ const RESOURCE_TABLE: ManagedResource[] = [
     fileName: "ffmpeg-core.wasm",
     downloadUrl: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/ffmpeg-core.wasm",
     descriptionKey: "ffmpegCoreWasmDesc"
+  },
+  {
+    id: "pdf-lib-js",
+    fileName: "pdf-lib.min.js",
+    downloadUrl: "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js",
+    descriptionKey: "pdfLibDesc"
   }
 ];
 

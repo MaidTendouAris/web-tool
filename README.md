@@ -8,8 +8,10 @@ The project keeps user files in the browser session. Image, data, and media inpu
 
 - Tool launcher with search, English and Chinese UI, system-language default, and manual language switching.
 - Light and dark themes, following the system theme by default with a manual toggle.
-- Resource Management for importing or downloading FFmpeg.wasm assets into browser cache.
+- Resource Management for importing or downloading runtime libraries into browser cache.
 - Image Processing: crop, stitch, and compress images with local preview and export.
+- Images to PDF: convert JPG/PNG images into a PDF with drag sorting, page sizing, fit modes, margins, and local download.
+- Audio Processing: convert MP3/AAC/OGG/M4A and other formats, trim ranges, remux, edit metadata, preview waveforms, and apply gain.
 - Data Unit Converter: convert common storage and transfer-rate units.
 - Video Processing: read metadata, extract audio, remux containers, clip video ranges, stitch compatible videos, and generate GIFs with preview timelines.
 
@@ -20,8 +22,10 @@ The project keeps user files in the browser session. Image, data, and media inpu
 - FFmpeg.wasm core files for video processing:
   - `ffmpeg-core.js`
   - `ffmpeg-core.wasm`
+- pdf-lib static file for image-to-PDF generation:
+  - `pdf-lib.min.js`
 
-The repository does not include or depend on a `resources` directory. Use the Resource Management section on `index.html` to import local FFmpeg files or download them into IndexedDB browser cache. After that, the video tool loads the cached core automatically.
+The repository does not include or depend on a `resources` directory. Use the Resource Management section on `index.html` to import local runtime files or download them into IndexedDB browser cache. After that, tools load cached libraries automatically.
 
 ## Run Locally
 
@@ -37,21 +41,25 @@ After editing TypeScript, compile the matching browser JavaScript:
 
 ```powershell
 tsc --ignoreConfig --target ES2020 --module none --ignoreDeprecations 6.0 --lib DOM,ES2020 --strict false --noImplicitAny false .\index.ts
+tsc --ignoreConfig --target ES2020 --module none --ignoreDeprecations 6.0 --lib DOM,ES2020 --strict false --noImplicitAny false .\audio-processing\audio-processing.ts
+tsc --ignoreConfig --target ES2020 --module none --ignoreDeprecations 6.0 --lib DOM,ES2020 --strict false --noImplicitAny false .\image-to-pdf\image-to-pdf.ts
 tsc --ignoreConfig --target ES2020 --module none --ignoreDeprecations 6.0 --lib DOM,ES2020 --strict false --noImplicitAny false .\image-processing\image-processing.ts
 tsc --ignoreConfig --target ES2020 --module none --ignoreDeprecations 6.0 --lib DOM,ES2020 --strict false --noImplicitAny false .\real-time-data-unit-converter\real-time-data-unit-converter.ts
 tsc --ignoreConfig --target ES2020 --module none --ignoreDeprecations 6.0 --lib DOM,ES2020 --strict false --noImplicitAny false .\video-processing\video-processing.ts
 ```
 
-For a quick type check:
+For a focused type check, pass the files you are editing. Example:
 
 ```powershell
-tsc --ignoreConfig --noEmit --strict false --noImplicitAny false --target ES2020 --module ES2020 --lib DOM,ES2020 .\index.ts .\image-processing\image-processing.ts .\real-time-data-unit-converter\real-time-data-unit-converter.ts .\video-processing\video-processing.ts
+tsc --ignoreConfig --noEmit --strict false --noImplicitAny false --target ES2020 --module ES2020 --lib DOM,ES2020 .\index.ts .\audio-processing\audio-processing.ts .\image-to-pdf\image-to-pdf.ts
 ```
 
 ## Repository Notes
 
-- FFmpeg.wasm runtime files are not vendored in this repository.
+- FFmpeg.wasm and pdf-lib runtime files are not vendored in this repository.
 - Video processing expects `ffmpeg-core.js` and `ffmpeg-core.wasm` to be present in browser cache, managed from the entry page.
+- Audio processing expects `ffmpeg-core.js` and `ffmpeg-core.wasm` to be present in browser cache, managed from the entry page.
+- Image-to-PDF generation expects `pdf-lib.min.js` to be present in browser cache, managed from the entry page.
 - This workspace currently does not require a package manager, bundler, or web server.
 
 ## License
@@ -70,8 +78,10 @@ Web Tool 是一个只依赖浏览器的本地工具集合。项目没有后端�
 
 - 带搜索的工具入口，支持中英文界面，默认跟随系统语言，也可手动切换。
 - 亮色和黑色主题，默认跟随系统主题，也可手动切换。
-- 资源管理：将 FFmpeg.wasm 资源导入或下载到浏览器缓存。
+- 资源管理：将额外运行库导入或下载到浏览器缓存。
 - 图片处理：裁剪、拼接、压缩，支持本地预览和导出。
+- 图片转 PDF：将 JPG/PNG 图片按拖拽排序合成为 PDF，支持页面尺寸、适配方式、边距和本地下载。
+- 音频处理：支持 MP3/AAC/OGG/M4A 等格式转换、片段裁剪、转封装、元数据编辑、波形预览和音量增益。
 - 数据单位转换：转换常见容量和传输速率单位。
 - 视频处理：读取元数据、提取音频、转封装、截取片段、拼接兼容视频、生成 GIF，并支持预览时间轴。
 
@@ -82,8 +92,10 @@ Web Tool 是一个只依赖浏览器的本地工具集合。项目没有后端�
 - 视频处理需要 FFmpeg.wasm 核心文件：
   - `ffmpeg-core.js`
   - `ffmpeg-core.wasm`
+- 图片转 PDF 需要 pdf-lib 静态文件：
+  - `pdf-lib.min.js`
 
-仓库不包含、也不依赖 `resources` 目录。请在 `index.html` 的“资源管理”区域中导入本地 FFmpeg 文件，或下载到 IndexedDB 浏览器缓存。完成后，视频处理工具会自动加载缓存中的本地核心。
+仓库不包含、也不依赖 `resources` 目录。请在 `index.html` 的“资源管理”区域中导入本地运行文件，或下载到 IndexedDB 浏览器缓存。完成后，工具会自动加载缓存中的运行库。
 
 ## 本地运行
 
@@ -99,8 +111,10 @@ Web Tool 是一个只依赖浏览器的本地工具集合。项目没有后端�
 
 ## 仓库说明
 
-- 本仓库不内置 FFmpeg.wasm 运行文件。
+- 本仓库不内置 FFmpeg.wasm 或 pdf-lib 运行文件。
 - 视频处理需要先通过入口页将 `ffmpeg-core.js` 和 `ffmpeg-core.wasm` 放入浏览器缓存。
+- 音频处理需要先通过入口页将 `ffmpeg-core.js` 和 `ffmpeg-core.wasm` 放入浏览器缓存。
+- 图片转 PDF 需要先通过入口页将 `pdf-lib.min.js` 放入浏览器缓存。
 - 当前项目不依赖包管理器、打包器或 Web 服务器。
 
 ## 许可证

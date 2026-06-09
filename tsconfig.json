@@ -11,6 +11,8 @@
   },
   "include": [
     "index.ts",
+    "audio-processing/**/*.ts",
+    "image-to-pdf/**/*.ts",
     "image-processing/**/*.ts",
     "real-time-data-unit-converter/**/*.ts",
     "video-processing/**/*.ts"

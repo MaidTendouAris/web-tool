@@ -123,6 +123,20 @@
       box-shadow: 0 1px 5px rgba(24, 32, 43, .1);
     }
 
+    .version-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 7px 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--panel) 86%, transparent);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
     .icon-btn {
       display: inline-flex;
       align-items: center;
@@ -655,6 +669,7 @@
         <span id="homeText">工具集</span>
       </a>
       <div class="top-actions">
+        <span class="version-badge">V1.0.0</span>
         <div class="language" aria-label="Language">
           <button type="button" data-lang="zh">中文</button>
           <button type="button" data-lang="en">EN</button>

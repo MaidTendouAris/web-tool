@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>音频处理</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #18202b;
+      --muted: #667085;
+      --line: #d9dee7;
+      --soft: #eef2f7;
+      --blue: #2563eb;
+      --green: #0f8f70;
+      --amber: #b76e00;
+      --danger: #c2410c;
+      --shadow: 0 10px 28px rgba(24, 32, 43, .08);
+      --ring: rgba(37, 99, 235, .18);
+      --range-track: #ffffff;
+      --range-track-border: #d1d7e2;
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #05070d;
+      --panel: #0d111a;
+      --text: #f4f7fb;
+      --muted: #96a1b3;
+      --line: #202938;
+      --soft: #111722;
+      --blue: #8ab4ff;
+      --green: #57d8b5;
+      --amber: #f0b45b;
+      --danger: #ff8a66;
+      --shadow: 0 18px 46px rgba(0, 0, 0, .55);
+      --ring: rgba(138, 180, 255, .22);
+      --range-track: #ffffff;
+      --range-track-border: #526071;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+    button, input, select, textarea { font: inherit; }
+    a { color: inherit; text-decoration: none; }
+    .shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 20px 0 44px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 52px; }
+    .home, .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      min-height: 38px; padding: 8px 12px; border: 1px solid var(--line);
+      border-radius: 8px; background: var(--panel); color: var(--text);
+      cursor: pointer; font-weight: 700;
+    }
+    .home { min-height: 36px; color: var(--muted); }
+    .home:hover, .btn:hover { border-color: var(--blue); color: var(--blue); }
+    .btn.primary { border-color: var(--blue); background: var(--blue); color: #fff; }
+    :root[data-theme="dark"] .btn.primary { color: #07111f; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .controls { display: flex; align-items: center; gap: 10px; }
+    .language { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+    .language button, .theme-button {
+      border: 0; border-radius: 6px; background: transparent; color: var(--muted);
+      min-width: 36px; min-height: 30px; cursor: pointer; font-weight: 800;
+    }
+    .language button.active { background: var(--soft); color: var(--blue); }
+    .theme-button { border: 1px solid var(--line); background: var(--panel); min-height: 38px; min-width: 40px; }
+    .version-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 7px 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .hero { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 22px; align-items: end; margin: 54px 0 20px; }
+    h1 { margin: 0 0 8px; font-size: clamp(36px, 5vw, 54px); line-height: 1.02; letter-spacing: 0; }
+    .lead { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.65; }
+    .engine-card, .card { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: var(--shadow); }
+    .engine-card { padding: 14px; display: grid; gap: 8px; }
+    .engine-card strong { font-size: 13px; }
+    .engine-card span { color: var(--muted); font-size: 13px; }
+    .tabs { display: flex; gap: 6px; padding: 6px; margin-bottom: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); overflow-x: auto; }
+    .tabs button { border: 0; border-radius: 7px; background: transparent; color: var(--muted); min-height: 32px; padding: 6px 10px; cursor: pointer; white-space: nowrap; font-weight: 800; }
+    .tabs button.active { background: var(--panel); color: var(--blue); box-shadow: 0 1px 5px rgba(24, 32, 43, .08); }
+    .workspace { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(320px, .95fr); gap: 14px; }
+    .card { padding: 16px; min-width: 0; }
+    .card h2 { margin: 0 0 14px; font-size: 18px; letter-spacing: 0; }
+    .upload {
+      display: grid; place-items: center; min-height: 138px; padding: 18px;
+      border: 2px dashed var(--line); border-radius: 8px; background: var(--panel);
+      color: var(--muted); text-align: center; cursor: pointer;
+    }
+    .upload.dragover { border-color: var(--blue); background: var(--soft); }
+    .upload strong { display: block; margin-bottom: 8px; color: var(--text); font-size: 16px; }
+    .upload input { display: none; }
+    .player-box { display: none; margin-top: 14px; }
+    .player-box.show { display: grid; gap: 10px; }
+    audio { width: 100%; }
+    canvas { width: 100%; height: 120px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
+    .preview-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .file-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; margin-top: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
+    .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
+    .file-meta { margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .icon-btn { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--muted); cursor: pointer; }
+    .icon-btn:hover { border-color: var(--blue); color: var(--blue); }
+    .resource-warning { margin-top: 14px; padding: 10px 12px; border-left: 4px solid var(--amber); border-radius: 8px; background: color-mix(in srgb, var(--amber) 12%, var(--panel)); color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .tool-panel { display: none; }
+    .tool-panel.active { display: block; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: end; margin-bottom: 14px; }
+    label { display: grid; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 700; }
+    input, select, textarea {
+      width: 100%; min-height: 38px; border: 1px solid var(--line); border-radius: 8px;
+      padding: 8px 10px; background: var(--panel); color: var(--text); outline: 0;
+    }
+    textarea { min-height: 96px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; font-size: 12px; line-height: 1.5; }
+    input:focus, select:focus, textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 4px var(--ring); }
+    input[readonly] { color: var(--muted); cursor: default; }
+    .timeline-control { display: grid; gap: 10px; margin-bottom: 16px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
+    .timeline-head { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 13px; font-weight: 800; }
+    .timeline-head output { color: var(--text); }
+    .range-stack { position: relative; height: 38px; }
+    .range-stack::before, .range-fill { position: absolute; left: 0; right: 0; top: 17px; height: 4px; border-radius: 999px; content: ""; }
+    .range-stack::before { border: 1px solid var(--range-track-border); background: var(--range-track); }
+    .range-fill { right: auto; background: var(--blue); pointer-events: none; z-index: 1; }
+    .range-stack input[type="range"] { position: absolute; inset: 0; z-index: 2; width: 100%; min-height: 38px; padding: 0; border: 0; background: transparent; pointer-events: none; accent-color: var(--blue); -webkit-appearance: none; appearance: none; }
+    .range-stack input[type="range"]:focus { box-shadow: none; }
+    .range-stack input[type="range"]::-webkit-slider-thumb { width: 16px; height: 16px; margin-top: -6px; border: 0; border-radius: 50%; background: var(--blue); box-shadow: 0 1px 4px rgba(0,0,0,.2); -webkit-appearance: none; pointer-events: auto; cursor: grab; }
+    .range-stack input[type="range"]::-webkit-slider-runnable-track { height: 4px; border: 0; border-radius: 999px; background: transparent; }
+    .range-stack input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: 50%; background: var(--blue); box-shadow: 0 1px 4px rgba(0,0,0,.2); pointer-events: auto; cursor: grab; }
+    .range-stack input[type="range"]::-moz-range-track { height: 4px; border: 0; border-radius: 999px; background: transparent; }
+    .metadata-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .status-line { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+    .summary-item { padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); color: var(--muted); font-size: 13px; }
+    .summary-item strong { display: block; margin-bottom: 4px; color: var(--text); }
+    .result-box { min-height: 120px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); color: var(--muted); overflow: auto; line-height: 1.6; }
+    .result-box a { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 8px 12px; border-radius: 8px; background: var(--green); color: #fff; font-weight: 800; }
+    :root[data-theme="dark"] .result-box a { color: #04110d; }
+    pre { margin: 0; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; font-size: 12px; }
+    .log { min-height: 120px; max-height: 240px; overflow: auto; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); color: var(--muted); font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; font-size: 12px; white-space: pre-wrap; }
+    @media (max-width: 860px) {
+      .hero, .workspace { grid-template-columns: 1fr; }
+      .form-grid, .metadata-grid, .summary { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <nav class="topbar" aria-label="页面导航" id="navLabel">
+      <a class="home" href="../index.html">‹ <span id="homeLink">工具集</span></a>
+      <div class="controls">
+        <span class="version-badge">V1.0.0</span>
+        <div class="language" aria-label="Language">
+          <button class="active" type="button" data-lang="zh">中文</button>
+          <button type="button" data-lang="en">EN</button>
+        </div>
+        <button class="theme-button" id="themeButton" type="button" aria-label="切换主题">◐</button>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div>
+        <h1 id="pageTitle">音频处理</h1>
+        <p class="lead" id="pageLead">使用本地 FFmpeg.wasm 资源进行音频转换、剪切、转封装、元数据编辑、预览和音量处理。</p>
+      </div>
+      <div class="engine-card">
+        <strong id="engineTitle">FFmpeg Core</strong>
+        <span id="engineStatus">尚未加载</span>
+        <button class="btn" id="loadCoreButton" type="button">加载本地核心</button>
+      </div>
+    </section>
+
+    <div class="tabs" role="tablist" aria-label="音频工具" id="toolTabs">
+      <button class="active" type="button" data-tool="convert">格式转换</button>
+      <button type="button" data-tool="cut">裁剪片段</button>
+      <button type="button" data-tool="remux">转封装</button>
+      <button type="button" data-tool="metadata">元数据</button>
+      <button type="button" data-tool="volume">音量增益</button>
+    </div>
+
+    <section class="workspace">
+      <div class="card">
+        <h2 id="inputTitle">输入文件</h2>
+        <label class="upload" id="uploadLabel">
+          <input id="fileInput" type="file" accept="audio/*,.mp3,.aac,.ogg,.m4a,.wav,.flac,.opus,.mp4">
+          <span>
+            <strong id="uploadTitle">选择或拖放音频文件</strong>
+            <span id="uploadHint">支持 MP3/AAC/OGG/M4A/WAV/FLAC/OPUS 等常见格式。</span>
+          </span>
+        </label>
+        <div class="player-box" id="playerBox">
+          <audio id="audioPlayer" controls preload="metadata"></audio>
+          <canvas id="waveformCanvas" width="900" height="160"></canvas>
+          <div class="preview-actions">
+            <button class="btn" id="usePreviewStart" type="button">使用当前时间为开始</button>
+            <button class="btn" id="usePreviewEnd" type="button">使用当前时间为结束</button>
+            <button class="btn" id="previewRange" type="button">预览片段范围</button>
+          </div>
+        </div>
+        <div id="fileBox"></div>
+        <div class="resource-warning" id="resourceWarning">需要先在入口页资源管理中导入或下载 ffmpeg-core.js 和 ffmpeg-core.wasm 到浏览器缓存。进入本页后仍需点击“加载本地核心”或在处理时自动加载。</div>
+      </div>
+
+      <div class="card">
+        <h2 id="settingsTitle">处理设置</h2>
+
+        <div class="tool-panel active" id="panel-convert">
+          <div class="form-grid">
+            <label>
+              <span id="convertFormatLabel">输出格式</span>
+              <select id="convertFormat">
+                <option value="mp3">MP3</option>
+                <option value="aac">AAC</option>
+                <option value="ogg">OGG</option>
+                <option value="m4a">M4A</option>
+                <option value="wav">WAV</option>
+                <option value="flac">FLAC</option>
+                <option value="opus">OPUS</option>
+              </select>
+            </label>
+            <label>
+              <span id="qualityLabel">编码参数</span>
+              <input id="encodeArgs" type="text" value="-vn -c:a libmp3lame -b:a 192k">
+            </label>
+          </div>
+          <label>
+            <span id="advancedArgsLabel">高级 FFmpeg 参数</span>
+            <textarea id="convertAdvancedArgs" spellcheck="false"></textarea>
+          </label>
+          <button class="btn primary run-btn" type="button" data-action="convert">转换音频</button>
+        </div>
+
+        <div class="tool-panel" id="panel-cut">
+          <div class="timeline-control">
+            <div class="timeline-head">
+              <span id="rangeLabel">裁剪范围</span>
+              <output id="cutRangeLabel">0.0s - 10.0s</output>
+            </div>
+            <div class="range-stack">
+              <div class="range-fill" id="cutRangeFill"></div>
+              <input id="cutStartRange" type="range" min="0" max="10" step="0.1" value="0">
+              <input id="cutEndRange" type="range" min="0" max="10" step="0.1" value="10">
+            </div>
+          </div>
+          <div class="form-grid">
+            <label><span id="startLabel">开始时间（秒）</span><input id="cutStart" type="number" min="0" step="0.1" value="0"></label>
+            <label><span id="endLabel">结束时间（秒）</span><input id="cutEnd" type="number" min="0.1" step="0.1" value="10"></label>
+            <label><span id="durationLabel">时长（秒）</span><input id="cutDuration" type="number" readonly value="10"></label>
+            <label><span id="cutFormatLabel">输出容器</span><select id="cutFormat"><option value="m4a">M4A</option><option value="mp3">MP3</option><option value="aac">AAC</option><option value="ogg">OGG</option><option value="wav">WAV</option></select></label>
+          </div>
+          <label>
+            <span id="cutArgsLabel">剪切参数</span>
+            <input id="cutArgs" type="text" value="-vn -c copy -avoid_negative_ts make_zero">
+          </label>
+          <button class="btn primary run-btn" type="button" data-action="cut">裁剪片段</button>
+        </div>
+
+        <div class="tool-panel" id="panel-remux">
+          <div class="form-grid">
+            <label><span id="remuxFormatLabel">目标容器</span><select id="remuxFormat"><option value="m4a">M4A</option><option value="aac">AAC</option><option value="ogg">OGG</option><option value="mp3">MP3</option></select></label>
+            <label><span id="remuxArgsLabel">转封装参数</span><input id="remuxArgs" type="text" value="-vn -c copy"></label>
+          </div>
+          <button class="btn primary run-btn" type="button" data-action="remux">转封装</button>
+        </div>
+
+        <div class="tool-panel" id="panel-metadata">
+          <p class="status-line" id="metadataHelp">读取完整媒体元数据；可编辑常见标签并写入新文件。</p>
+          <div class="metadata-grid">
+            <label><span id="metaTitleLabel">标题</span><input id="metaTitle" type="text"></label>
+            <label><span id="metaArtistLabel">艺术家</span><input id="metaArtist" type="text"></label>
+            <label><span id="metaAlbumLabel">专辑</span><input id="metaAlbum" type="text"></label>
+            <label><span id="metaAlbumArtistLabel">专辑艺术家</span><input id="metaAlbumArtist" type="text"></label>
+            <label><span id="metaDateLabel">日期</span><input id="metaDate" type="text"></label>
+            <label><span id="metaGenreLabel">流派</span><input id="metaGenre" type="text"></label>
+            <label><span id="metaTrackLabel">音轨</span><input id="metaTrack" type="text"></label>
+            <label><span id="metaComposerLabel">作曲</span><input id="metaComposer" type="text"></label>
+          </div>
+          <label><span id="metaCommentLabel">注释</span><textarea id="metaComment"></textarea></label>
+          <label><span id="metaExtraLabel">额外标签（每行 key=value）</span><textarea id="metaExtra" spellcheck="false"></textarea></label>
+          <div class="preview-actions" style="margin-top:10px">
+            <button class="btn" type="button" data-action="read-metadata">读取元数据</button>
+            <button class="btn primary" type="button" data-action="write-metadata">写入元数据</button>
+          </div>
+        </div>
+
+        <div class="tool-panel" id="panel-volume">
+          <div class="form-grid">
+            <label><span id="gainLabel">音量增益（dB）</span><input id="gainInput" type="number" step="0.5" value="0"></label>
+            <label><span id="volumeFormatLabel">输出格式</span><select id="volumeFormat"><option value="mp3">MP3</option><option value="m4a">M4A</option><option value="ogg">OGG</option><option value="wav">WAV</option><option value="flac">FLAC</option></select></label>
+          </div>
+          <label><span id="volumeArgsLabel">编码参数</span><input id="volumeArgs" type="text" value="-vn -c:a libmp3lame -b:a 192k"></label>
+          <button class="btn primary run-btn" type="button" data-action="volume">应用增益</button>
+        </div>
+
+        <div class="status-line" id="statusLine">等待输入文件</div>
+      </div>
+    </section>
+
+    <section class="workspace" style="margin-top:14px">
+      <div class="card">
+        <h2 id="outputTitle">输出</h2>
+        <div class="summary" id="summary"></div>
+        <div class="result-box" id="resultBox">暂无输出</div>
+      </div>
+      <div class="card">
+        <h2 id="logTitle">日志</h2>
+        <div class="log" id="logBox"></div>
+      </div>
+    </section>
+  </main>
+  <script src="./audio-processing.js"></script>
+</body>
+</html>

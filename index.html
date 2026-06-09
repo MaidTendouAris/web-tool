@@ -60,12 +60,27 @@
       margin-bottom: 18px;
     }
 
-    .language, .theme-toggle {
+    .language, .theme-toggle, .github-link, .version-badge {
       display: inline-flex;
+      align-items: center;
+      justify-content: center;
       padding: 4px;
       border: 1px solid var(--line);
       border-radius: 8px;
       background: color-mix(in srgb, var(--panel) 86%, transparent);
+    }
+
+    .github-link, .version-badge {
+      min-height: 40px;
+      padding: 7px 11px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .github-link:hover {
+      border-color: var(--blue);
+      color: var(--blue);
     }
 
     .language button {
@@ -445,6 +460,8 @@
 
     .icon.green { background: var(--green); }
     .icon.cyan { background: #0e7490; }
+    .icon.amber { background: #b76e00; }
+    .icon.violet { background: #6d5bd0; }
 
     .icon svg {
       width: 25px;
@@ -554,6 +571,8 @@
 <body>
   <main class="shell">
     <div class="topbar">
+      <a class="github-link" href="https://github.com/MaidTendouAris/web-tool" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <span class="version-badge">V1.0.0</span>
       <div class="language" aria-label="Language">
         <button type="button" data-lang="zh">中文</button>
         <button type="button" data-lang="en">EN</button>
@@ -638,6 +657,44 @@
           <span class="tag" data-i18n="videoTagConcat">拼接</span>
           <span class="tag" data-i18n="videoTagRemux">转封装</span>
           <span class="tag" data-i18n="videoTagMetadata">元数据</span>
+        </div>
+      </a>
+
+      <a class="tool-card" href="./audio-processing/audio-processing.html" data-search-zh="音频处理 音频转换 mp3 aac ogg m4a wav flac opus 剪切 裁剪 转封装 元数据 编辑 波形 预览 音量 增益 ffmpeg" data-search-en="audio processing convert mp3 aac ogg m4a wav flac opus trim cut remux metadata edit waveform preview volume gain ffmpeg">
+        <div class="tool-top">
+          <span class="icon violet" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"></path><circle cx="6" cy="18" r="3"></circle><circle cx="16" cy="16" r="3"></circle></svg>
+          </span>
+          <span class="open"><span data-i18n="open">打开</span> <svg viewBox="0 0 24 24"><path d="M7 17 17 7"></path><path d="M8 7h9v9"></path></svg></span>
+        </div>
+        <div>
+          <h2 data-i18n="audioTitle">音频处理</h2>
+          <p class="desc" data-i18n="audioDesc">基于本地 FFmpeg.wasm 执行格式转换、无损剪切、转封装、元数据编辑、波形预览和音量增益。</p>
+        </div>
+        <div class="features">
+          <span class="tag" data-i18n="audioTagConvert">格式转换</span>
+          <span class="tag" data-i18n="audioTagCut">裁剪片段</span>
+          <span class="tag" data-i18n="audioTagMetadata">元数据编辑</span>
+          <span class="tag" data-i18n="audioTagWaveform">波形预览</span>
+        </div>
+      </a>
+
+      <a class="tool-card" href="./image-to-pdf/image-to-pdf.html" data-search-zh="图片转pdf 图片 pdf jpg jpeg png 多选 上传 拖拽排序 页面尺寸 a4 纵向 横向 边距 下载 pdf-lib" data-search-en="images to pdf image pdf jpg jpeg png multi upload drag sort page size a4 portrait landscape margin download pdf-lib">
+        <div class="tool-top">
+          <span class="icon amber" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6Z"></path><path d="M14 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h4"></path></svg>
+          </span>
+          <span class="open"><span data-i18n="open">打开</span> <svg viewBox="0 0 24 24"><path d="M7 17 17 7"></path><path d="M8 7h9v9"></path></svg></span>
+        </div>
+        <div>
+          <h2 data-i18n="pdfTitle">图片转 PDF</h2>
+          <p class="desc" data-i18n="pdfDesc">将多张 JPG/PNG 图片按顺序转换为 PDF，支持页面尺寸、适配方式、边距和文件名设置。</p>
+        </div>
+        <div class="features">
+          <span class="tag" data-i18n="pdfTagUpload">多图上传</span>
+          <span class="tag" data-i18n="pdfTagSort">拖拽排序</span>
+          <span class="tag" data-i18n="pdfTagLayout">页面布局</span>
+          <span class="tag" data-i18n="pdfTagDownload">下载 PDF</span>
         </div>
       </a>
     </section>
