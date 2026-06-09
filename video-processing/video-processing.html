@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>视频处理</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #18202b;
+      --muted: #667085;
+      --line: #d9dee7;
+      --soft: #eef2f7;
+      --blue: #2563eb;
+      --green: #0f8f70;
+      --amber: #b76e00;
+      --danger: #c2410c;
+      --shadow: 0 10px 28px rgba(24, 32, 43, .08);
+      --ring: rgba(37, 99, 235, .18);
+      --range-track: #ffffff;
+      --range-track-border: #d1d7e2;
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #05070d;
+      --panel: #0d111a;
+      --text: #f4f7fb;
+      --muted: #96a1b3;
+      --line: #202938;
+      --soft: #111722;
+      --blue: #8ab4ff;
+      --green: #57d8b5;
+      --amber: #f0b45b;
+      --danger: #ff8a66;
+      --shadow: 0 18px 46px rgba(0, 0, 0, .55);
+      --ring: rgba(138, 180, 255, .22);
+      --range-track: #ffffff;
+      --range-track-border: #526071;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    button, input, select {
+      font: inherit;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 20px 0 44px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 52px;
+    }
+
+    .home {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 36px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .home:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+
+    .top-actions {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .language {
+      display: inline-flex;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--panel) 86%, transparent);
+    }
+
+    .language button {
+      min-height: 30px;
+      padding: 5px 10px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .language button.active {
+      background: var(--panel);
+      color: var(--blue);
+      box-shadow: 0 1px 5px rgba(24, 32, 43, .1);
+    }
+
+    .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--panel) 86%, transparent);
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .icon-btn:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+
+    svg {
+      width: 17px;
+      height: 17px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex: 0 0 auto;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 20px;
+      align-items: end;
+      margin: 20px 0;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(30px, 5vw, 48px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .engine {
+      min-width: 240px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .engine strong {
+      display: block;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .engine .btn {
+      width: 100%;
+      min-height: 34px;
+      margin-top: 10px;
+      padding: 6px 10px;
+      font-size: 13px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft);
+      overflow-x: auto;
+      margin-bottom: 14px;
+    }
+
+    .tabs button {
+      min-height: 34px;
+      padding: 6px 12px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .tabs button.active {
+      background: var(--panel);
+      color: var(--blue);
+      box-shadow: 0 1px 5px rgba(24, 32, 43, .1);
+    }
+
+    .tool-panel {
+      display: none;
+    }
+
+    .tool-panel.active {
+      display: block;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, .95fr) minmax(360px, 1.05fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+
+    .card h2 {
+      margin: 0 0 14px;
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+
+    .upload {
+      display: grid;
+      place-items: center;
+      gap: 8px;
+      min-height: 138px;
+      border: 2px dashed var(--line);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--panel) 90%, var(--bg));
+      color: var(--muted);
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .16s ease, background .16s ease;
+      margin-bottom: 12px;
+    }
+
+    .upload:hover, .upload.drag {
+      border-color: var(--blue);
+      background: color-mix(in srgb, var(--blue) 7%, var(--panel));
+    }
+
+    .upload strong {
+      color: var(--text);
+      font-size: 18px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .file-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .preview {
+      display: none;
+      gap: 10px;
+      margin: 12px 0;
+    }
+
+    .preview.show {
+      display: grid;
+    }
+
+    .preview video {
+      width: 100%;
+      max-height: 320px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #000;
+    }
+
+    .preview-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .file-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      min-height: 58px;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--panel) 90%, var(--bg));
+    }
+
+    .file-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 800;
+    }
+
+    .file-sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .mini-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .mini-actions button {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .mini-actions button:hover {
+      color: var(--blue);
+      border-color: var(--blue);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    input, select {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: var(--panel);
+      color: var(--text);
+      outline: 0;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 4px var(--ring);
+    }
+
+    input[readonly] {
+      color: var(--muted);
+      cursor: default;
+    }
+
+    .timeline-control {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 16px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft);
+    }
+
+    .timeline-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .timeline-head output {
+      color: var(--text);
+    }
+
+    .range-stack {
+      position: relative;
+      height: 38px;
+    }
+
+    .range-stack::before,
+    .range-fill {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 17px;
+      height: 4px;
+      border-radius: 999px;
+      content: "";
+    }
+
+    .range-stack::before {
+      border: 1px solid var(--range-track-border);
+      background: var(--range-track);
+    }
+
+    .range-fill {
+      right: auto;
+      background: var(--blue);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .range-stack input[type="range"] {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      width: 100%;
+      min-height: 38px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      pointer-events: none;
+      accent-color: var(--blue);
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .range-stack input[type="range"]:focus {
+      box-shadow: none;
+    }
+
+    .range-stack input[type="range"]::-webkit-slider-thumb {
+      width: 16px;
+      height: 16px;
+      margin-top: -6px;
+      border: 0;
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, .2);
+      -webkit-appearance: none;
+      pointer-events: auto;
+      cursor: grab;
+    }
+
+    .range-stack input[type="range"]::-webkit-slider-runnable-track {
+      height: 4px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+    }
+
+    .range-stack input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border: 0;
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, .2);
+      pointer-events: auto;
+      cursor: grab;
+    }
+
+    .range-stack input[type="range"]::-moz-range-track {
+      height: 4px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 38px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .btn:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+
+    .btn.primary {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .status-line {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+      margin-top: 12px;
+    }
+
+    .output-card {
+      display: grid;
+      gap: 12px;
+    }
+
+    .result-box {
+      display: grid;
+      place-items: center;
+      min-height: 120px;
+      padding: 12px;
+      border-radius: 8px;
+      background: var(--soft);
+      color: var(--muted);
+      overflow: auto;
+      text-align: center;
+    }
+
+    .result-box a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: var(--blue);
+      color: #fff;
+      font-weight: 800;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .summary-item {
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--panel) 90%, var(--bg));
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .summary-item strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--text);
+    }
+
+    pre {
+      width: 100%;
+      max-height: 420px;
+      margin: 0;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      text-align: left;
+      color: var(--text);
+      font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+
+    .log {
+      min-height: 160px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0b0f17;
+      color: #d9e4f2;
+      overflow: auto;
+      font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .warn {
+      padding: 10px 12px;
+      border-left: 4px solid var(--amber);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--amber) 10%, var(--panel));
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 13px;
+    }
+
+    @media (max-width: 900px) {
+      .shell { width: min(100% - 24px, 1180px); }
+      .hero, .workspace { grid-template-columns: 1fr; }
+      .form-grid, .summary { grid-template-columns: 1fr; }
+      .tabs button { flex: 1 0 auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <nav class="topbar" aria-label="页面导航">
+      <a class="home" href="../index.html">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+        <span id="homeText">工具集</span>
+      </a>
+      <div class="top-actions">
+        <div class="language" aria-label="Language">
+          <button type="button" data-lang="zh">中文</button>
+          <button type="button" data-lang="en">EN</button>
+        </div>
+        <button class="icon-btn" id="themeButton" type="button" title="切换主题" aria-label="切换主题">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 7.5A8.5 8.5 0 1 1 12 3Z"></path></svg>
+        </button>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div>
+        <h1 id="pageTitle">视频处理</h1>
+        <p class="lead" id="pageLead">使用本地 FFmpeg.wasm 资源进行音频提取、拼接、转封装、GIF 生成和元数据读取。</p>
+      </div>
+      <div class="engine">
+        <strong id="engineTitle">FFmpeg Core</strong>
+        <span id="engineStatus">尚未加载</span>
+        <button class="btn" id="pickResourceDirButton" type="button">加载本地核心</button>
+      </div>
+    </section>
+
+    <div class="tabs" role="tablist" aria-label="视频工具">
+      <button class="active" type="button" data-tool="metadata">元数据</button>
+      <button type="button" data-tool="audio">音频提取</button>
+      <button type="button" data-tool="remux">转封装</button>
+      <button type="button" data-tool="clip">截取片段</button>
+      <button type="button" data-tool="concat">拼接</button>
+      <button type="button" data-tool="gif">GIF 生成</button>
+    </div>
+
+    <section class="workspace">
+      <div class="card">
+        <h2 id="inputTitle">输入文件</h2>
+        <label class="upload" id="singleUpload">
+          <input class="hidden" id="singleFileInput" type="file" accept="video/*,audio/*">
+          <strong id="singleUploadTitle">选择或拖放音视频文件</strong>
+          <span id="singleUploadHint">用于元数据、音频提取、转封装和 GIF 生成</span>
+        </label>
+        <label class="upload hidden" id="multiUpload">
+          <input class="hidden" id="multiFileInput" type="file" accept="video/*" multiple>
+          <strong id="multiUploadTitle">选择或拖放多个视频文件</strong>
+          <span id="multiUploadHint">用于无重编码拼接，建议同编码、同分辨率</span>
+        </label>
+        <div class="preview" id="videoPreviewBox">
+          <video id="videoPreview" controls preload="metadata"></video>
+          <div class="preview-actions">
+            <button class="btn" id="usePreviewStart" type="button">使用当前时间为开始</button>
+            <button class="btn" id="usePreviewEnd" type="button">使用当前时间为结束</button>
+            <button class="btn" id="previewClipRange" type="button">预览片段范围</button>
+          </div>
+        </div>
+        <ul class="file-list" id="fileList"></ul>
+        <div class="warn" id="resourceWarning"></div>
+      </div>
+
+      <div class="card">
+        <h2 id="settingsTitle">处理设置</h2>
+
+        <div class="tool-panel active" id="panel-metadata">
+          <p class="status-line" id="metadataHelp">读取容器、时长、码率和音视频流信息。</p>
+          <button class="btn primary run-btn" type="button" data-action="metadata">读取元数据</button>
+        </div>
+
+        <div class="tool-panel" id="panel-audio">
+          <div class="form-grid">
+            <label>
+              <span id="audioFormatLabel">输出格式</span>
+              <select id="audioFormat">
+                <option value="mp3">MP3</option>
+                <option value="wav">WAV</option>
+                <option value="aac">AAC</option>
+                <option value="m4a">M4A Copy</option>
+              </select>
+            </label>
+          </div>
+          <button class="btn primary run-btn" type="button" data-action="audio">提取音频</button>
+        </div>
+
+        <div class="tool-panel" id="panel-remux">
+          <div class="form-grid">
+            <label>
+              <span id="containerLabel">目标容器</span>
+              <select id="containerFormat">
+                <option value="mp4">MP4</option>
+                <option value="mkv">MKV</option>
+                <option value="webm">WebM</option>
+                <option value="mov">MOV</option>
+              </select>
+            </label>
+          </div>
+          <button class="btn primary run-btn" type="button" data-action="remux">转封装</button>
+        </div>
+
+        <div class="tool-panel" id="panel-clip">
+          <div class="timeline-control">
+            <div class="timeline-head">
+              <span id="clipTimelineLabel">截取范围</span>
+              <output id="clipRangeLabel">0.0s - 10.0s</output>
+            </div>
+            <div class="range-stack">
+              <div class="range-fill" id="clipRangeFill"></div>
+              <input id="clipStartRange" type="range" min="0" max="10" step="0.1" value="0" aria-labelledby="clipTimelineLabel">
+              <input id="clipEndRange" type="range" min="0" max="10" step="0.1" value="10" aria-labelledby="clipTimelineLabel">
+            </div>
+          </div>
+          <div class="form-grid">
+            <label>
+              <span id="clipStartLabel">开始时间（秒）</span>
+              <input id="clipStart" type="number" min="0" step="0.1" value="0">
+            </label>
+            <label>
+              <span id="clipEndLabel">结束时间（秒）</span>
+              <input id="clipEnd" type="number" min="0.1" step="0.1" value="10">
+            </label>
+            <label>
+              <span id="clipDurationLabel">时长（秒）</span>
+              <input id="clipDuration" type="number" min="0.1" step="0.1" value="10" readonly>
+            </label>
+            <label>
+              <span id="clipFormatLabel">输出容器</span>
+              <select id="clipFormat">
+                <option value="mp4">MP4</option>
+                <option value="mkv">MKV</option>
+                <option value="webm">WebM</option>
+                <option value="mov">MOV</option>
+              </select>
+            </label>
+          </div>
+          <button class="btn primary run-btn" type="button" data-action="clip">截取片段</button>
+        </div>
+
+        <div class="tool-panel" id="panel-concat">
+          <p class="status-line" id="concatHelp">使用 concat demuxer 进行无重编码拼接。文件编码参数不一致时可能失败。</p>
+          <button class="btn primary run-btn" type="button" data-action="concat">拼接视频</button>
+        </div>
+
+        <div class="tool-panel" id="panel-gif">
+          <div class="timeline-control">
+            <div class="timeline-head">
+              <span id="gifTimelineLabel">GIF 范围</span>
+              <output id="gifRangeLabel">0.0s - 3.0s</output>
+            </div>
+            <div class="range-stack">
+              <div class="range-fill" id="gifRangeFill"></div>
+              <input id="gifStartRange" type="range" min="0" max="3" step="0.1" value="0" aria-labelledby="gifTimelineLabel">
+              <input id="gifEndRange" type="range" min="0" max="3" step="0.1" value="3" aria-labelledby="gifTimelineLabel">
+            </div>
+          </div>
+          <div class="form-grid">
+            <label>
+              <span id="gifStartLabel">开始时间（秒）</span>
+              <input id="gifStart" type="number" min="0" step="0.1" value="0">
+            </label>
+            <label>
+              <span id="gifEndLabel">结束时间（秒）</span>
+              <input id="gifEnd" type="number" min="0.1" step="0.1" value="3">
+            </label>
+            <label>
+              <span id="gifDurationLabel">时长（秒）</span>
+              <input id="gifDuration" type="number" min="0.1" step="0.1" value="3" readonly>
+            </label>
+            <label>
+              <span id="gifWidthLabel">宽度 px</span>
+              <input id="gifWidth" type="number" min="80" step="10" value="480">
+            </label>
+            <label>
+              <span id="gifFpsLabel">帧率</span>
+              <input id="gifFps" type="number" min="1" max="30" step="1" value="12">
+            </label>
+          </div>
+          <button class="btn primary run-btn" type="button" data-action="gif">生成 GIF</button>
+        </div>
+
+        <div class="status-line" id="statusLine">等待输入文件</div>
+      </div>
+    </section>
+
+    <section class="workspace" style="margin-top:14px">
+      <div class="card output-card">
+        <h2 id="outputTitle">输出</h2>
+        <div class="summary" id="summary"></div>
+        <div class="result-box" id="resultBox">暂无输出</div>
+      </div>
+      <div class="card output-card">
+        <h2 id="logTitle">日志</h2>
+        <div class="log" id="logBox"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="./video-processing.js"></script>
+</body>
+</html>

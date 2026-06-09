@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Web Tool</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #18202b;
+      --muted: #667085;
+      --line: #d9dee7;
+      --blue: #2563eb;
+      --green: #0f8f70;
+      --shadow: 0 12px 30px rgba(24, 32, 43, .08);
+      --ring: rgba(37, 99, 235, .18);
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #05070d;
+      --panel: #0d111a;
+      --text: #f4f7fb;
+      --muted: #96a1b3;
+      --line: #202938;
+      --blue: #8ab4ff;
+      --green: #57d8b5;
+      --shadow: 0 18px 46px rgba(0, 0, 0, .55);
+      --ring: rgba(138, 180, 255, .22);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      color: var(--text);
+      background:
+        linear-gradient(180deg, rgba(37, 99, 235, .08), transparent 340px),
+        var(--bg);
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    button, input { font: inherit; }
+
+    .shell {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 44px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .language, .theme-toggle {
+      display: inline-flex;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--panel) 86%, transparent);
+    }
+
+    .language button {
+      min-height: 30px;
+      padding: 5px 10px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .language button.active {
+      background: var(--panel);
+      color: var(--blue);
+      box-shadow: 0 1px 5px rgba(24, 32, 43, .1);
+    }
+
+    .theme-toggle {
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+
+    .theme-toggle svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .brand {
+      display: grid;
+      gap: 8px;
+    }
+
+    .eyebrow {
+      width: fit-content;
+      padding: 4px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: color-mix(in srgb, var(--panel) 78%, transparent);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(32px, 5vw, 56px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 650px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    .status {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 30px;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--panel) 82%, transparent);
+    }
+
+    .searchbar {
+      position: relative;
+      margin: 0 0 18px;
+    }
+
+    .searchbar svg {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    .searchbar input {
+      width: 100%;
+      min-height: 48px;
+      padding: 11px 44px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      outline: 0;
+      box-shadow: var(--shadow);
+    }
+
+    .searchbar input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 4px var(--ring), var(--shadow);
+    }
+
+    .clear-search {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: none;
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .clear-search.show {
+      display: inline-grid;
+      place-items: center;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+    }
+
+    .resource-panel {
+      margin-top: 22px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .resource-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+
+    .resource-head h2 {
+      margin: 0 0 7px;
+      font-size: 22px;
+    }
+
+    .resource-head p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .resource-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .resource-modes {
+      display: inline-flex;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--panel) 86%, transparent);
+    }
+
+    .resource-modes button {
+      min-height: 30px;
+      padding: 5px 10px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .resource-modes button.active {
+      background: var(--panel);
+      color: var(--blue);
+      box-shadow: 0 1px 5px rgba(24, 32, 43, .1);
+    }
+
+    .resource-button {
+      min-height: 38px;
+      padding: 8px 12px;
+      border: 1px solid var(--blue);
+      border-radius: 8px;
+      background: var(--blue);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .resource-button.secondary {
+      border-color: var(--line);
+      background: var(--panel);
+      color: var(--text);
+    }
+
+    .resource-button.secondary:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+
+    .resource-button:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    .resource-note {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .resource-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .resource-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--panel) 90%, var(--bg));
+    }
+
+    .resource-name {
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .resource-desc, .resource-path {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+      word-break: break-all;
+    }
+
+    .resource-status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .resource-status.ready {
+      border-color: color-mix(in srgb, var(--green) 70%, var(--line));
+      color: var(--green);
+    }
+
+    .resource-status.missing {
+      border-color: color-mix(in srgb, #d97706 70%, var(--line));
+      color: #b76e00;
+    }
+
+    :root[data-theme="dark"] .resource-status.missing {
+      color: #f0b45b;
+    }
+
+    .resource-download {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--blue);
+      cursor: pointer;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .resource-item > div:last-child {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .tool-card {
+      display: grid;
+      min-height: 260px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+    }
+
+    .tool-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(37, 99, 235, .45);
+      box-shadow: 0 18px 44px rgba(24, 32, 43, .12);
+    }
+
+    .tool-card.hidden {
+      display: none;
+    }
+
+    .tool-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+    }
+
+    .icon {
+      display: inline-grid;
+      place-items: center;
+      width: 46px;
+      height: 46px;
+      border-radius: 8px;
+      color: #fff;
+      background: var(--blue);
+      flex: 0 0 auto;
+    }
+
+    .icon.green { background: var(--green); }
+    .icon.cyan { background: #0e7490; }
+
+    .icon svg {
+      width: 25px;
+      height: 25px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    h2 {
+      margin: 18px 0 8px;
+      font-size: 24px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .desc {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-self: end;
+      margin-top: 24px;
+    }
+
+    .tag {
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #f1f4f8;
+      color: #475467;
+      font-size: 13px;
+    }
+
+    :root[data-theme="dark"] .tag {
+      background: #151b27;
+      color: #b8c2d3;
+    }
+
+    .open {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--blue);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .open svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .empty {
+      display: none;
+      min-height: 160px;
+      place-items: center;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--panel) 70%, transparent);
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    .empty.show {
+      display: grid;
+    }
+
+    footer {
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 760px) {
+      .shell { width: min(100% - 24px, 1120px); padding-top: 16px; }
+      .topbar { justify-content: flex-start; }
+      header { display: grid; align-items: start; }
+      .status { justify-content: flex-start; }
+      .grid { grid-template-columns: 1fr; }
+      .tool-card { min-height: 230px; padding: 18px; }
+      .resource-head { display: grid; }
+      .resource-actions { justify-content: flex-start; }
+      .resource-item { grid-template-columns: 1fr; }
+      .resource-item > div:last-child { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="topbar">
+      <div class="language" aria-label="Language">
+        <button type="button" data-lang="zh">中文</button>
+        <button type="button" data-lang="en">EN</button>
+      </div>
+      <button class="theme-toggle" id="themeButton" type="button" data-i18n-attr="title:themeToggle;aria-label:themeToggle">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 7.5A8.5 8.5 0 1 1 12 3Z"></path></svg>
+      </button>
+    </div>
+
+    <header>
+      <div class="brand">
+        <span class="eyebrow" data-i18n="eyebrow">Browser only</span>
+        <h1 data-i18n="title">Web Tool</h1>
+        <p class="lead" data-i18n="lead">一个只依赖浏览器的本地工具集合。打开 HTML 文件即可使用，图片和数据都留在当前浏览器里处理。</p>
+      </div>
+      <div class="status" aria-label="项目特点" data-i18n-attr="aria-label:statusLabel">
+        <span class="pill" data-i18n="statusServerless">无服务端</span>
+        <span class="pill" data-i18n="statusBuildless">无构建步骤</span>
+        <span class="pill" data-i18n="statusOffline">离线可用</span>
+      </div>
+    </header>
+
+    <div class="searchbar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16.5 16.5 4 4"></path></svg>
+      <input id="toolSearch" type="search" autocomplete="off" data-i18n-attr="placeholder:searchPlaceholder;aria-label:searchLabel">
+      <button class="clear-search" id="clearSearch" type="button" aria-label="清空搜索" data-i18n-attr="aria-label:clearSearch">×</button>
+    </div>
+
+    <section class="grid" aria-label="工具列表" data-i18n-attr="aria-label:toolListLabel">
+      <a class="tool-card" href="./image-processing/image-processing.html" data-search-zh="图片处理 裁剪 拼接 压缩 png jpg webp 上传 预览 导出" data-search-en="image processing crop stitch compress png jpg webp upload preview export">
+        <div class="tool-top">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"></rect><circle cx="9" cy="9" r="1.6"></circle><path d="m5 18 5.5-6 3.5 3.5 2-2.2 3 4.7"></path></svg>
+          </span>
+          <span class="open"><span data-i18n="open">打开</span> <svg viewBox="0 0 24 24"><path d="M7 17 17 7"></path><path d="M8 7h9v9"></path></svg></span>
+        </div>
+        <div>
+          <h2 data-i18n="imageTitle">图片处理</h2>
+          <p class="desc" data-i18n="imageDesc">裁剪、拼接、压缩图片，支持拖放上传、实时预览和本地导出。</p>
+        </div>
+        <div class="features">
+          <span class="tag" data-i18n="imageTagCrop">裁剪</span>
+          <span class="tag" data-i18n="imageTagStitch">拼接</span>
+          <span class="tag" data-i18n="imageTagCompress">压缩</span>
+          <span class="tag">PNG / JPG / WebP</span>
+        </div>
+      </a>
+
+      <a class="tool-card" href="./real-time-data-unit-converter/real-time-data-unit-converter.html" data-search-zh="数据单位转换 传输速率 网络速率 容量 bit byte bps mbps gb tb 1024 1000 复制" data-search-en="data unit converter transfer rate network speed storage capacity bit byte bps mbps gb tb 1024 1000 copy">
+        <div class="tool-top">
+          <span class="icon green" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M7 7h10"></path><path d="M7 12h10"></path><path d="M7 17h10"></path><path d="M4 5.5v13"></path><path d="M20 5.5v13"></path></svg>
+          </span>
+          <span class="open"><span data-i18n="open">打开</span> <svg viewBox="0 0 24 24"><path d="M7 17 17 7"></path><path d="M8 7h9v9"></path></svg></span>
+        </div>
+        <div>
+          <h2 data-i18n="converterTitle">数据单位转换</h2>
+          <p class="desc" data-i18n="converterDesc">在网络速率和数据容量之间实时换算，清楚区分 bit、Byte、1000 进制与 1024 进制。</p>
+        </div>
+        <div class="features">
+          <span class="tag">bps / B/s</span>
+          <span class="tag">KB / MB / GB / TB</span>
+          <span class="tag" data-i18n="converterTagCopy">一键复制</span>
+          <span class="tag" data-i18n="converterTagRealtime">实时计算</span>
+        </div>
+      </a>
+
+      <a class="tool-card" href="./video-processing/video-processing.html" data-search-zh="视频处理 音频提取 截取片段 剪辑 预览 拼接 转封装 gif 生成 元数据 ffmpeg mp4 webm mkv mov wav mp3" data-search-en="video processing audio extraction clip trim preview stitch remux gif metadata ffmpeg mp4 webm mkv mov wav mp3">
+        <div class="tool-top">
+          <span class="icon cyan" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m10 9 5 3-5 3Z"></path><path d="M7 5v14"></path></svg>
+          </span>
+          <span class="open"><span data-i18n="open">打开</span> <svg viewBox="0 0 24 24"><path d="M7 17 17 7"></path><path d="M8 7h9v9"></path></svg></span>
+        </div>
+        <div>
+          <h2 data-i18n="videoTitle">视频处理</h2>
+          <p class="desc" data-i18n="videoDesc">基于本地 FFmpeg.wasm 执行音频提取、片段截取、视频拼接、转封装、GIF 生成和元数据读取。</p>
+        </div>
+        <div class="features">
+          <span class="tag" data-i18n="videoTagAudio">音频提取</span>
+          <span class="tag" data-i18n="videoTagClip">截取片段</span>
+          <span class="tag" data-i18n="videoTagConcat">拼接</span>
+          <span class="tag" data-i18n="videoTagRemux">转封装</span>
+          <span class="tag" data-i18n="videoTagMetadata">元数据</span>
+        </div>
+      </a>
+    </section>
+
+    <section class="resource-panel" aria-labelledby="resourceTitle">
+      <div class="resource-head">
+        <div>
+          <h2 id="resourceTitle" data-i18n="resourceTitle">资源管理</h2>
+          <p data-i18n="resourceDesc">为后续音视频处理工具准备本地运行资源。首次导入或下载到浏览器缓存后，工具会自动从缓存加载。</p>
+        </div>
+        <div class="resource-actions">
+          <button class="resource-button secondary" id="refreshResources" type="button" data-i18n="refreshResources">刷新检查</button>
+          <span class="resource-note" id="resourceDirectoryNote" data-i18n="resourceModeCache">浏览器缓存</span>
+        </div>
+      </div>
+      <div class="resource-note" id="resourceSupportNote"></div>
+      <div class="resource-list" id="resourceList"></div>
+    </section>
+
+    <div class="empty" id="emptyState" data-i18n="emptyState">没有找到匹配的工具。</div>
+
+    <footer data-i18n="footer">所有工具均为静态页面。直接双击入口文件或部署到任意静态站点即可使用。</footer>
+  </main>
+  <script src="./index.js"></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "allowJs": false,
+    "checkJs": false,
+    "lib": ["DOM", "ES2020"],
+    "module": "ES2020",
+    "noEmit": true,
+    "noImplicitAny": false,
+    "strict": false,
+    "target": "ES2020"
+  },
+  "include": [
+    "index.ts",
+    "image-processing/**/*.ts",
+    "real-time-data-unit-converter/**/*.ts",
+    "video-processing/**/*.ts"
+  ]
+}

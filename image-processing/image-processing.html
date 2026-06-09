@@ -1,0 +1,796 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>图片处理</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #18202b;
+      --muted: #667085;
+      --line: #d9dee7;
+      --soft: #eef2f7;
+      --blue: #2563eb;
+      --green: #0f8f70;
+      --amber: #b76e00;
+      --danger: #c2410c;
+      --shadow: 0 10px 28px rgba(24, 32, 43, .08);
+      --ring: rgba(37, 99, 235, .18);
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #05070d;
+      --panel: #0d111a;
+      --text: #f4f7fb;
+      --muted: #96a1b3;
+      --line: #202938;
+      --soft: #111722;
+      --blue: #8ab4ff;
+      --green: #57d8b5;
+      --amber: #f0b45b;
+      --danger: #ff8a66;
+      --shadow: 0 18px 46px rgba(0, 0, 0, .55);
+      --ring: rgba(138, 180, 255, .22);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    button, input, select {
+      font: inherit;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 20px 0 44px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 52px;
+    }
+
+    .home {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 36px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .top-actions {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .language {
+      display: inline-flex;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--panel) 86%, transparent);
+    }
+
+    .language button {
+      min-height: 30px;
+      padding: 5px 10px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .language button.active {
+      background: var(--panel);
+      color: var(--blue);
+      box-shadow: 0 1px 5px rgba(24, 32, 43, .1);
+    }
+
+    .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--panel) 86%, transparent);
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .icon-btn:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+
+    .home:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+
+    svg {
+      width: 17px;
+      height: 17px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex: 0 0 auto;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 20px;
+      align-items: end;
+      margin: 20px 0;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(30px, 5vw, 48px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .tabs {
+      display: inline-flex;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft);
+    }
+
+    .tabs button, .segmented button {
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .tabs button {
+      min-height: 34px;
+      padding: 6px 12px;
+    }
+
+    .tabs button.active, .segmented button.active {
+      background: var(--panel);
+      color: var(--blue);
+      box-shadow: 0 1px 5px rgba(24, 32, 43, .1);
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .tool-panel {
+      display: none;
+    }
+
+    .tool-panel.active {
+      display: block;
+    }
+
+    .upload {
+      display: grid;
+      place-items: center;
+      gap: 8px;
+      min-height: 152px;
+      margin-bottom: 14px;
+      border: 2px dashed var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--muted);
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .16s ease, background .16s ease;
+    }
+
+    .upload:hover, .upload.drag {
+      border-color: var(--blue);
+      background: color-mix(in srgb, var(--blue) 7%, var(--panel));
+    }
+
+    .upload strong {
+      display: block;
+      color: var(--text);
+      font-size: 18px;
+    }
+
+    .upload span {
+      font-size: 13px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(320px, .75fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 16px;
+    }
+
+    .card h2 {
+      margin: 0 0 14px;
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+
+    .controls {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    input, select {
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: var(--panel);
+      color: var(--text);
+      outline: 0;
+    }
+
+    input[type="range"] {
+      min-height: 0;
+      padding: 0;
+      accent-color: var(--blue);
+    }
+
+    input[type="color"] {
+      width: 46px;
+      padding: 3px;
+      cursor: pointer;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 4px var(--ring);
+    }
+
+    .segmented {
+      display: flex;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft);
+      width: fit-content;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+
+    .segmented button {
+      min-height: 30px;
+      padding: 5px 9px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 38px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .btn:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+
+    .btn.primary {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .btn.danger:hover {
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    .btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .stage {
+      display: grid;
+      place-items: center;
+      min-height: 260px;
+      padding: 12px;
+      border-radius: 8px;
+      background:
+        linear-gradient(45deg, #e6eaf0 25%, transparent 25%),
+        linear-gradient(-45deg, #e6eaf0 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #e6eaf0 75%),
+        linear-gradient(-45deg, transparent 75%, #e6eaf0 75%);
+      background-size: 22px 22px;
+      background-position: 0 0, 0 11px, 11px -11px, -11px 0;
+      overflow: auto;
+    }
+
+    :root[data-theme="dark"] .stage {
+      background:
+        linear-gradient(45deg, #121a27 25%, transparent 25%),
+        linear-gradient(-45deg, #121a27 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #121a27 75%),
+        linear-gradient(-45deg, transparent 75%, #121a27 75%);
+      background-color: #0a0f18;
+      background-size: 22px 22px;
+      background-position: 0 0, 0 11px, 11px -11px, -11px 0;
+    }
+
+    .preview {
+      display: grid;
+      place-items: center;
+      min-height: 260px;
+      padding: 12px;
+      border-radius: 8px;
+      background: var(--soft);
+      overflow: auto;
+    }
+
+    .preview img, .preview canvas {
+      max-width: 100%;
+      max-height: 520px;
+      border-radius: 6px;
+    }
+
+    .empty {
+      color: var(--muted);
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .crop-box {
+      position: relative;
+      line-height: 0;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .crop-box img {
+      display: block;
+      max-width: none;
+      height: auto;
+    }
+
+    .crop-overlay {
+      position: absolute;
+      inset: 0;
+      cursor: crosshair;
+    }
+
+    .mask {
+      position: absolute;
+      background: rgba(0, 0, 0, .48);
+    }
+
+    .crop-rect {
+      position: absolute;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(0, 0, 0, .32);
+      cursor: move;
+    }
+
+    .handle {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--blue);
+      border-radius: 50%;
+      background: #fff;
+    }
+
+    .handle.nw { left: -8px; top: -8px; cursor: nwse-resize; }
+    .handle.n { left: 50%; top: -8px; margin-left: -7px; cursor: ns-resize; }
+    .handle.ne { right: -8px; top: -8px; cursor: nesw-resize; }
+    .handle.e { right: -8px; top: 50%; margin-top: -7px; cursor: ew-resize; }
+    .handle.se { right: -8px; bottom: -8px; cursor: nwse-resize; }
+    .handle.s { left: 50%; bottom: -8px; margin-left: -7px; cursor: ns-resize; }
+    .handle.sw { left: -8px; bottom: -8px; cursor: nesw-resize; }
+    .handle.w { left: -8px; top: 50%; margin-top: -7px; cursor: ew-resize; }
+
+    .meta {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .meta strong {
+      color: var(--text);
+    }
+
+    .image-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .image-item {
+      display: grid;
+      grid-template-columns: 56px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      min-height: 70px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .image-item.dragging {
+      opacity: .55;
+    }
+
+    .thumb {
+      width: 56px;
+      height: 52px;
+      object-fit: cover;
+      border-radius: 6px;
+      background: var(--soft);
+    }
+
+    .name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 800;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .mini-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .mini-actions button {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .mini-actions button:hover {
+      color: var(--blue);
+      border-color: var(--blue);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      align-items: end;
+    }
+
+    .full {
+      grid-column: 1 / -1;
+    }
+
+    @media (max-width: 880px) {
+      .shell { width: min(100% - 24px, 1180px); }
+      .hero, .workspace { grid-template-columns: 1fr; }
+      .tabs { width: 100%; }
+      .tabs button { flex: 1; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <nav class="topbar" aria-label="页面导航">
+      <a class="home" href="../index.html">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+        <span id="homeText">工具集</span>
+      </a>
+      <div class="top-actions">
+        <div class="language" aria-label="Language">
+          <button type="button" data-lang="zh">中文</button>
+          <button type="button" data-lang="en">EN</button>
+        </div>
+        <button class="icon-btn" id="themeButton" type="button" title="切换主题" aria-label="切换主题">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 7.5A8.5 8.5 0 1 1 12 3Z"></path></svg>
+        </button>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div>
+        <h1>图片处理</h1>
+        <p class="lead">裁剪、拼接、压缩图片。所有处理都在当前浏览器完成。</p>
+      </div>
+      <div class="tabs" role="tablist" aria-label="图片工具">
+        <button class="active" type="button" data-tool="crop">裁剪</button>
+        <button type="button" data-tool="stitch">拼接</button>
+        <button type="button" data-tool="compress">压缩</button>
+      </div>
+    </section>
+
+    <section class="tool-panel active" id="panel-crop">
+      <label class="upload" id="cropUpload">
+        <input class="hidden" id="cropFile" type="file" accept="image/*">
+        <strong>选择或拖放图片</strong>
+        <span>JPG、PNG、GIF、WebP</span>
+      </label>
+
+      <div class="workspace hidden" id="cropWorkspace">
+        <div class="card">
+          <h2>裁剪区域</h2>
+          <div class="controls">
+            <div class="segmented" id="aspectButtons" aria-label="裁剪比例">
+              <button class="active" type="button" data-ratio="free">自由</button>
+              <button type="button" data-ratio="1">1:1</button>
+              <button type="button" data-ratio="1.3333333333">4:3</button>
+              <button type="button" data-ratio="1.7777777778">16:9</button>
+              <button type="button" data-ratio="0.5625">9:16</button>
+            </div>
+            <div class="row">
+              <button class="btn" id="cropReset" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6"></path></svg>
+                重置
+              </button>
+            </div>
+          </div>
+          <div class="stage">
+            <div class="crop-box" id="cropBox">
+              <img id="cropImage" alt="待裁剪图片">
+              <div class="crop-overlay" id="cropOverlay">
+                <div class="mask" id="maskTop"></div>
+                <div class="mask" id="maskRight"></div>
+                <div class="mask" id="maskBottom"></div>
+                <div class="mask" id="maskLeft"></div>
+                <div class="crop-rect" id="cropRect">
+                  <span class="handle nw" data-handle="nw"></span>
+                  <span class="handle n" data-handle="n"></span>
+                  <span class="handle ne" data-handle="ne"></span>
+                  <span class="handle e" data-handle="e"></span>
+                  <span class="handle se" data-handle="se"></span>
+                  <span class="handle s" data-handle="s"></span>
+                  <span class="handle sw" data-handle="sw"></span>
+                  <span class="handle w" data-handle="w"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="meta" id="cropMeta"></div>
+        </div>
+
+        <div class="card">
+          <h2>预览</h2>
+          <div class="preview" id="cropPreview"><span class="empty">等待图片</span></div>
+          <div class="meta" id="cropOutputMeta"></div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn primary" id="cropDownload" type="button" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
+              下载 PNG
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tool-panel" id="panel-stitch">
+      <label class="upload" id="stitchUpload">
+        <input class="hidden" id="stitchFiles" type="file" accept="image/*" multiple>
+        <strong>选择或拖放多张图片</strong>
+        <span>最多 20 张，可调整顺序</span>
+      </label>
+
+      <div class="workspace hidden" id="stitchWorkspace">
+        <div class="card">
+          <h2>图片列表</h2>
+          <ul class="image-list" id="stitchList"></ul>
+          <div class="row" style="margin-top:12px">
+            <button class="btn danger" id="stitchClear" type="button">清空</button>
+            <span class="meta" id="stitchCount"></span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>拼接设置</h2>
+          <div class="form-grid">
+            <label>
+              方向
+              <select id="stitchDirection">
+                <option value="vertical">纵向</option>
+                <option value="horizontal">横向</option>
+              </select>
+            </label>
+            <label>
+              对齐
+              <select id="stitchAlign">
+                <option value="center">居中</option>
+                <option value="start">起始</option>
+                <option value="end">末尾</option>
+              </select>
+            </label>
+            <label>
+              缩放
+              <select id="stitchFit">
+                <option value="none">保持原尺寸</option>
+                <option value="width">统一宽度</option>
+                <option value="height">统一高度</option>
+              </select>
+            </label>
+            <label>
+              目标尺寸 px
+              <input id="stitchSize" type="number" min="1" step="1" value="1080">
+            </label>
+            <label>
+              间距 px
+              <input id="stitchGap" type="number" min="0" step="1" value="0">
+            </label>
+            <label>
+              圆角 px
+              <input id="stitchRadius" type="number" min="0" step="1" value="0">
+            </label>
+            <label>
+              背景
+              <input id="stitchBg" type="color" value="#ffffff">
+            </label>
+            <label>
+              格式
+              <select id="stitchFormat">
+                <option value="image/png">PNG</option>
+                <option value="image/jpeg">JPG</option>
+                <option value="image/webp">WebP</option>
+              </select>
+            </label>
+          </div>
+          <div class="preview" id="stitchPreview" style="margin-top:14px"><span class="empty">等待图片</span></div>
+          <div class="meta" id="stitchMeta"></div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn primary" id="stitchDownload" type="button" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
+              下载
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tool-panel" id="panel-compress">
+      <label class="upload" id="compressUpload">
+        <input class="hidden" id="compressFile" type="file" accept="image/*">
+        <strong>选择或拖放图片</strong>
+        <span>调整质量、格式与输出尺寸</span>
+      </label>
+
+      <div class="workspace hidden" id="compressWorkspace">
+        <div class="card">
+          <h2>压缩设置</h2>
+          <div class="form-grid">
+            <label>
+              输出格式
+              <select id="compressFormat">
+                <option value="image/jpeg">JPG</option>
+                <option value="image/webp">WebP</option>
+                <option value="image/png">PNG</option>
+              </select>
+            </label>
+            <label>
+              质量 <span id="qualityText">80%</span>
+              <input id="compressQuality" type="range" min="1" max="100" value="80">
+            </label>
+            <label>
+              最大宽度 px
+              <input id="maxWidth" type="number" min="1" step="1">
+            </label>
+            <label>
+              最大高度 px
+              <input id="maxHeight" type="number" min="1" step="1">
+            </label>
+          </div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn" id="resetSize" type="button">恢复原尺寸</button>
+          </div>
+          <div class="meta" id="compressMeta"></div>
+        </div>
+
+        <div class="card">
+          <h2>预览</h2>
+          <div class="preview" id="compressPreview"><span class="empty">等待图片</span></div>
+          <div class="meta" id="compressOutputMeta"></div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn primary" id="compressDownload" type="button" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
+              下载
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="./image-processing.js"></script>
+</body>
+</html>
