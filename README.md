@@ -15,6 +15,7 @@ https://maidtendouaris.github.io/web-tools/
 - Tool launcher with search, English and Chinese UI, system-language default, and manual language switching.
 - Light and dark themes, following the system theme by default with a manual toggle.
 - Resource Management for importing or downloading runtime libraries into browser cache.
+- Password Generator: generate local random passwords and passphrases with length, character-set, similar-character exclusion, batch output, strength hints, and copy controls.
 - Image Processing: crop, stitch, and compress images with local preview and export.
 - Images to PDF: convert JPG/PNG images into a PDF with drag sorting, page sizing, fit modes, margins, and local download.
 - Audio Processing: convert MP3/AAC/OGG/M4A and other formats, trim ranges, remux, edit metadata, preview waveforms, and apply gain.

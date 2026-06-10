@@ -16,6 +16,12 @@ type LanguagePack = {
   themeToggle: string;
   toolListLabel: string;
   open: string;
+  passwordTitle: string;
+  passwordDesc: string;
+  passwordTagLength: string;
+  passwordTagOptions: string;
+  passwordTagPassphrase: string;
+  passwordTagCopy: string;
   imageTitle: string;
   imageDesc: string;
   imageTagCrop: string;
@@ -97,6 +103,12 @@ const LANGUAGE_TABLE: Record<SupportedLanguage, LanguagePack> = {
     themeToggle: "切换主题",
     toolListLabel: "工具列表",
     open: "打开",
+    passwordTitle: "密码生成器",
+    passwordDesc: "使用浏览器本地随机数生成密码和密码短语，支持长度、字符类型、批量生成、强度提示和一键复制。",
+    passwordTagLength: "长度设置",
+    passwordTagOptions: "字符选项",
+    passwordTagPassphrase: "密码短语",
+    passwordTagCopy: "一键复制",
     imageTitle: "图片处理",
     imageDesc: "裁剪、拼接、压缩图片，支持拖放上传、实时预览和本地导出。",
     imageTagCrop: "裁剪",
@@ -165,6 +177,12 @@ const LANGUAGE_TABLE: Record<SupportedLanguage, LanguagePack> = {
     themeToggle: "Toggle theme",
     toolListLabel: "Tool list",
     open: "Open",
+    passwordTitle: "Password Generator",
+    passwordDesc: "Generate passwords and passphrases locally in the browser, with length controls, character options, batch output, strength hints, and copy actions.",
+    passwordTagLength: "Length",
+    passwordTagOptions: "Character options",
+    passwordTagPassphrase: "Passphrase",
+    passwordTagCopy: "Copy",
     imageTitle: "Image Processing",
     imageDesc: "Crop, stitch, and compress images with drag-and-drop upload, live previews, and local export.",
     imageTagCrop: "Crop",
