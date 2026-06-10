@@ -4,6 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Web Tool</title>
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem("web-tool-theme");
+        var theme = saved === "dark" || saved === "light"
+          ? saved
+          : window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = theme;
+      } catch (error) {
+        document.documentElement.dataset.theme =
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+    })();
+  </script>
   <style>
     :root {
       color-scheme: light;
@@ -582,7 +596,7 @@
   <main class="shell">
     <div class="topbar">
       <a class="github-link" href="https://github.com/MaidTendouAris/web-tool" target="_blank" rel="noopener noreferrer">GitHub</a>
-      <span class="version-badge">V1.1.0</span>
+      <span class="version-badge">V1.1.1</span>
       <div class="language" aria-label="Language">
         <button type="button" data-lang="zh">中文</button>
         <button type="button" data-lang="en">EN</button>

@@ -4,6 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>音频处理</title>
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem("web-tool-theme");
+        var theme = saved === "dark" || saved === "light"
+          ? saved
+          : window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = theme;
+      } catch (error) {
+        document.documentElement.dataset.theme =
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+    })();
+  </script>
   <style>
     :root {
       color-scheme: light;
