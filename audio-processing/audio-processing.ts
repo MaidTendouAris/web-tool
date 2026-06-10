@@ -341,6 +341,23 @@
     return matches.map(function (part) { return part.replace(/^["']|["']$/g, ""); });
   }
 
+  function audioEncodeArgs(format: string) {
+    var args: Record<string, string> = {
+      mp3: "-vn -c:a libmp3lame -b:a 192k",
+      aac: "-vn -c:a aac -b:a 192k",
+      ogg: "-vn -c:a libvorbis -q:a 5",
+      m4a: "-vn -c:a aac -b:a 192k",
+      wav: "-vn -c:a pcm_s16le",
+      flac: "-vn -c:a flac",
+      opus: "-vn -c:a libopus -b:a 128k"
+    };
+    return args[format] || "-vn";
+  }
+
+  function cutEncodeArgs(format: string) {
+    return audioEncodeArgs(format) + " -avoid_negative_ts make_zero";
+  }
+
   function clearPreviewStopTimer() {
     if (previewStopTimer) {
       window.clearTimeout(previewStopTimer);
@@ -890,16 +907,15 @@
 
   function syncDefaultArgs() {
     var format = $("#convertFormat").value;
-    var args: Record<string, string> = {
-      mp3: "-vn -c:a libmp3lame -b:a 192k",
-      aac: "-vn -c:a aac -b:a 192k",
-      ogg: "-vn -c:a libvorbis -q:a 5",
-      m4a: "-vn -c:a aac -b:a 192k",
-      wav: "-vn -c:a pcm_s16le",
-      flac: "-vn -c:a flac",
-      opus: "-vn -c:a libopus -b:a 128k"
-    };
-    $("#encodeArgs").value = args[format] || "-vn";
+    $("#encodeArgs").value = audioEncodeArgs(format);
+  }
+
+  function syncCutDefaultArgs() {
+    $("#cutArgs").value = cutEncodeArgs($("#cutFormat").value);
+  }
+
+  function syncRemuxDefaultArgs() {
+    $("#remuxArgs").value = audioEncodeArgs($("#remuxFormat").value);
   }
 
   setupUpload();
@@ -936,6 +952,8 @@
   $("#cutStart").addEventListener("change", function () { requestCutBounds(Number($("#cutStart").value) || 0, Number($("#cutEnd").value) || 10, "start", true); });
   $("#cutEnd").addEventListener("change", function () { requestCutBounds(Number($("#cutStart").value) || 0, Number($("#cutEnd").value) || 10, "end", true); });
   $("#convertFormat").addEventListener("change", syncDefaultArgs);
+  $("#cutFormat").addEventListener("change", syncCutDefaultArgs);
+  $("#remuxFormat").addEventListener("change", syncRemuxDefaultArgs);
   $("[data-action='read-metadata']").addEventListener("click", function () { runAction("read-metadata"); });
   $("[data-action='write-metadata']").addEventListener("click", function () { runAction("write-metadata"); });
   $$(".run-btn").forEach(function (button) {
@@ -957,5 +975,8 @@
 
   applyTheme(resolveInitialTheme());
   applyLanguage(currentLanguage);
+  syncDefaultArgs();
+  syncCutDefaultArgs();
+  syncRemuxDefaultArgs();
   setTool("convert");
 })();

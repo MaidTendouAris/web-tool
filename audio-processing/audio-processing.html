@@ -133,6 +133,7 @@
     .resource-warning { margin-top: 14px; padding: 10px 12px; border-left: 4px solid var(--amber); border-radius: 8px; background: color-mix(in srgb, var(--amber) 12%, var(--panel)); color: var(--muted); font-size: 13px; line-height: 1.6; }
     .tool-panel { display: none; }
     .tool-panel.active { display: block; }
+    .tool-panel > label + .run-btn { margin-top: 14px; }
     .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: end; margin-bottom: 14px; }
     label { display: grid; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 700; }
     input, select, textarea {
@@ -273,19 +274,19 @@
             <label><span id="startLabel">开始时间（秒）</span><input id="cutStart" type="number" min="0" step="0.1" value="0"></label>
             <label><span id="endLabel">结束时间（秒）</span><input id="cutEnd" type="number" min="0.1" step="0.1" value="10"></label>
             <label><span id="durationLabel">时长（秒）</span><input id="cutDuration" type="number" readonly value="10"></label>
-            <label><span id="cutFormatLabel">输出容器</span><select id="cutFormat"><option value="m4a">M4A</option><option value="mp3">MP3</option><option value="aac">AAC</option><option value="ogg">OGG</option><option value="wav">WAV</option></select></label>
+            <label><span id="cutFormatLabel">输出容器</span><select id="cutFormat"><option value="m4a">M4A</option><option value="mp3">MP3</option><option value="aac">AAC</option><option value="ogg">OGG</option><option value="wav">WAV</option><option value="flac">FLAC</option></select></label>
           </div>
           <label>
             <span id="cutArgsLabel">剪切参数</span>
-            <input id="cutArgs" type="text" value="-vn -c copy -avoid_negative_ts make_zero">
+            <input id="cutArgs" type="text" value="-vn -c:a aac -b:a 192k -avoid_negative_ts make_zero">
           </label>
           <button class="btn primary run-btn" type="button" data-action="cut">裁剪片段</button>
         </div>
 
         <div class="tool-panel" id="panel-remux">
           <div class="form-grid">
-            <label><span id="remuxFormatLabel">目标容器</span><select id="remuxFormat"><option value="m4a">M4A</option><option value="aac">AAC</option><option value="ogg">OGG</option><option value="mp3">MP3</option></select></label>
-            <label><span id="remuxArgsLabel">转封装参数</span><input id="remuxArgs" type="text" value="-vn -c copy"></label>
+            <label><span id="remuxFormatLabel">目标容器</span><select id="remuxFormat"><option value="m4a">M4A</option><option value="aac">AAC</option><option value="ogg">OGG</option><option value="mp3">MP3</option><option value="flac">FLAC</option></select></label>
+            <label><span id="remuxArgsLabel">转封装参数</span><input id="remuxArgs" type="text" value="-vn -c:a aac -b:a 192k"></label>
           </div>
           <button class="btn primary run-btn" type="button" data-action="remux">转封装</button>
         </div>

@@ -550,7 +550,9 @@
         images: [],
         canvas: null,
         blob: null,
-        draggedIndex: null
+        draggedIndex: null,
+        previewTimer: 0,
+        previewMaxEdge: 1200
       };
 
       function getStitchSettings() {
@@ -586,7 +588,31 @@
         var item = stitch.images.splice(from, 1)[0];
         stitch.images.splice(to, 0, item);
         renderStitchList();
-        updateStitchPreview();
+        queueStitchPreview();
+      }
+
+      function getStitchIndexFromItem(item) {
+        var value = item && item.dataset ? Number(item.dataset.index) : NaN;
+        return Number.isFinite(value) ? value : -1;
+      }
+
+      function updateStitchDragIndexes() {
+        $$("#stitchList .image-item").forEach(function (item, index) {
+          item.dataset.index = String(index);
+        });
+      }
+
+      function finishStitchDrag() {
+        stitch.draggedIndex = null;
+        $("#stitchList").classList.remove("drag-sorting");
+        $$("#stitchList .image-item").forEach(function (item) {
+          item.classList.remove("dragging", "drag-over");
+        });
+      }
+
+      function queueStitchPreview() {
+        clearTimeout(stitch.previewTimer);
+        stitch.previewTimer = setTimeout(updateStitchPreview, 160);
       }
 
       function renderStitchList() {
@@ -595,6 +621,7 @@
         stitch.images.forEach(function (item, index) {
           var li = document.createElement("li");
           li.className = "image-item";
+          li.dataset.index = String(index);
           li.draggable = true;
           li.innerHTML = [
             '<span class="drag-handle" aria-hidden="true">⋮⋮</span>',
@@ -609,26 +636,44 @@
             '<button type="button" data-action="remove" title="' + t("remove") + '">×</button>',
             "</div>"
           ].join("");
-          li.addEventListener("dragstart", function () {
+          li.addEventListener("dragstart", function (event) {
             stitch.draggedIndex = index;
+            $("#stitchList").classList.add("drag-sorting");
             li.classList.add("dragging");
+            if (event.dataTransfer) {
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData("text/plain", String(index));
+            }
           });
           li.addEventListener("dragend", function () {
-            stitch.draggedIndex = null;
-            li.classList.remove("dragging");
-            $$("#stitchList .image-item").forEach(function (item) { item.classList.remove("drag-over"); });
+            finishStitchDrag();
+            renderStitchList();
+            queueStitchPreview();
           });
           li.addEventListener("dragover", function (event) {
             event.preventDefault();
-            if (stitch.draggedIndex !== null && stitch.draggedIndex !== index) li.classList.add("drag-over");
+            var from = stitch.draggedIndex;
+            var to = getStitchIndexFromItem(li);
+            if (from === null || from === to || from < 0 || to < 0) return;
+            li.classList.add("drag-over");
+            var item = stitch.images.splice(from, 1)[0];
+            stitch.images.splice(to, 0, item);
+            stitch.draggedIndex = to;
+            var draggedItem = $("#stitchList .image-item.dragging");
+            if (draggedItem) {
+              if (from < to) li.after(draggedItem);
+              else li.before(draggedItem);
+              updateStitchDragIndexes();
+            }
           });
           li.addEventListener("dragleave", function () {
             li.classList.remove("drag-over");
           });
           li.addEventListener("drop", function (event) {
             event.preventDefault();
-            li.classList.remove("drag-over");
-            moveStitchItem(stitch.draggedIndex, index);
+            finishStitchDrag();
+            renderStitchList();
+            queueStitchPreview();
           });
           li.querySelector(".mini-actions").addEventListener("click", function (event) {
             var action = event.target.dataset.action;
@@ -644,9 +689,10 @@
         });
         $("#stitchWorkspace").classList.toggle("hidden", stitch.images.length === 0);
         $("#stitchCount").textContent = stitch.images.length + " / 20 " + t("imagesUnit");
+        updateStitchDragIndexes();
       }
 
-      function makeStitchCanvas() {
+      function makeStitchLayout(maxEdge) {
         var settings = getStitchSettings();
         var isVertical = settings.direction === "vertical";
         var gridSize = settings.direction === "grid2" ? 2 : settings.direction === "grid3" ? 3 : settings.direction === "grid4" ? 4 : 0;
@@ -663,73 +709,132 @@
           }
           return { item: item, w: Math.round(w), h: Math.round(h) };
         });
+        var fullW = 1;
+        var fullH = 1;
 
         if (gridSize > 0) {
           var rows = Math.ceil(items.length / gridSize);
           var cellW = Math.max.apply(null, items.map(function (item) { return item.w; }));
           var cellH = Math.max.apply(null, items.map(function (item) { return item.h; }));
+          fullW = Math.max(1, gridSize * cellW + Math.max(0, gridSize - 1) * settings.gap);
+          fullH = Math.max(1, rows * cellH + Math.max(0, rows - 1) * settings.gap);
+          var gridScale = maxEdge ? Math.min(1, maxEdge / Math.max(fullW, fullH)) : 1;
+          return {
+            settings: settings,
+            isVertical: isVertical,
+            gridSize: gridSize,
+            rows: rows,
+            cellW: cellW,
+            cellH: cellH,
+            fullW: fullW,
+            fullH: fullH,
+            canvasW: Math.max(1, Math.round(fullW * gridScale)),
+            canvasH: Math.max(1, Math.round(fullH * gridScale)),
+            scale: gridScale,
+            items: items
+          };
+        }
+
+        var gapTotal = Math.max(0, items.length - 1) * settings.gap;
+        fullW = isVertical
+          ? Math.max.apply(null, items.map(function (item) { return item.w; }))
+          : items.reduce(function (sum, item) { return sum + item.w; }, 0) + gapTotal;
+        fullH = isVertical
+          ? items.reduce(function (sum, item) { return sum + item.h; }, 0) + gapTotal
+          : Math.max.apply(null, items.map(function (item) { return item.h; }));
+        var scale = maxEdge ? Math.min(1, maxEdge / Math.max(fullW, fullH)) : 1;
+        return {
+          settings: settings,
+          isVertical: isVertical,
+          gridSize: gridSize,
+          rows: 0,
+          cellW: 0,
+          cellH: 0,
+          fullW: Math.max(1, fullW),
+          fullH: Math.max(1, fullH),
+          canvasW: Math.max(1, Math.round(fullW * scale)),
+          canvasH: Math.max(1, Math.round(fullH * scale)),
+          scale: scale,
+          items: items
+        };
+      }
+
+      function scaleStitchValue(value, scale) {
+        return Math.round(value * scale);
+      }
+
+      function makeStitchCanvas(maxEdge) {
+        var layout = makeStitchLayout(maxEdge);
+        var settings = layout.settings;
+        var scale = layout.scale;
+
+        if (layout.gridSize > 0) {
+          var cellW = layout.cellW;
+          var cellH = layout.cellH;
           var gridCanvas = document.createElement("canvas");
-          gridCanvas.width = Math.max(1, gridSize * cellW + Math.max(0, gridSize - 1) * settings.gap);
-          gridCanvas.height = Math.max(1, rows * cellH + Math.max(0, rows - 1) * settings.gap);
+          gridCanvas.width = layout.canvasW;
+          gridCanvas.height = layout.canvasH;
           var gridCtx = gridCanvas.getContext("2d");
           gridCtx.fillStyle = settings.bg;
           gridCtx.fillRect(0, 0, gridCanvas.width, gridCanvas.height);
-          items.forEach(function (entry, index) {
-            var col = index % gridSize;
-            var row = Math.floor(index / gridSize);
+          layout.items.forEach(function (entry, index) {
+            var col = index % layout.gridSize;
+            var row = Math.floor(index / layout.gridSize);
             var cellX = col * (cellW + settings.gap);
             var cellY = row * (cellH + settings.gap);
             var x = cellX + (settings.align === "center" ? (cellW - entry.w) / 2 : settings.align === "end" ? cellW - entry.w : 0);
             var y = cellY + (cellH - entry.h) / 2;
+            var drawX = scaleStitchValue(x, scale);
+            var drawY = scaleStitchValue(y, scale);
+            var drawW = scaleStitchValue(entry.w, scale);
+            var drawH = scaleStitchValue(entry.h, scale);
+            var radius = scaleStitchValue(settings.radius, scale);
             if (settings.radius > 0) {
               gridCtx.save();
-              roundedRect(gridCtx, x, y, entry.w, entry.h, settings.radius);
+              roundedRect(gridCtx, drawX, drawY, drawW, drawH, radius);
               gridCtx.clip();
-              gridCtx.drawImage(entry.item.img, x, y, entry.w, entry.h);
+              gridCtx.drawImage(entry.item.img, drawX, drawY, drawW, drawH);
               gridCtx.restore();
             } else {
-              gridCtx.drawImage(entry.item.img, x, y, entry.w, entry.h);
+              gridCtx.drawImage(entry.item.img, drawX, drawY, drawW, drawH);
             }
           });
           return gridCanvas;
         }
 
-        var gapTotal = Math.max(0, items.length - 1) * settings.gap;
-        var canvasW = isVertical
-          ? Math.max.apply(null, items.map(function (item) { return item.w; }))
-          : items.reduce(function (sum, item) { return sum + item.w; }, 0) + gapTotal;
-        var canvasH = isVertical
-          ? items.reduce(function (sum, item) { return sum + item.h; }, 0) + gapTotal
-          : Math.max.apply(null, items.map(function (item) { return item.h; }));
-
         var canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, canvasW);
-        canvas.height = Math.max(1, canvasH);
+        canvas.width = layout.canvasW;
+        canvas.height = layout.canvasH;
         var ctx = canvas.getContext("2d");
         ctx.fillStyle = settings.bg;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         var offset = 0;
-        items.forEach(function (entry) {
+        layout.items.forEach(function (entry) {
           var x = 0;
           var y = 0;
-          if (isVertical) {
+          if (layout.isVertical) {
             y = offset;
-            x = settings.align === "center" ? (canvas.width - entry.w) / 2 : settings.align === "end" ? canvas.width - entry.w : 0;
+            x = settings.align === "center" ? (layout.fullW - entry.w) / 2 : settings.align === "end" ? layout.fullW - entry.w : 0;
             offset += entry.h + settings.gap;
           } else {
             x = offset;
-            y = settings.align === "center" ? (canvas.height - entry.h) / 2 : settings.align === "end" ? canvas.height - entry.h : 0;
+            y = settings.align === "center" ? (layout.fullH - entry.h) / 2 : settings.align === "end" ? layout.fullH - entry.h : 0;
             offset += entry.w + settings.gap;
           }
+          var drawX = scaleStitchValue(x, scale);
+          var drawY = scaleStitchValue(y, scale);
+          var drawW = scaleStitchValue(entry.w, scale);
+          var drawH = scaleStitchValue(entry.h, scale);
+          var radius = scaleStitchValue(settings.radius, scale);
           if (settings.radius > 0) {
             ctx.save();
-            roundedRect(ctx, x, y, entry.w, entry.h, settings.radius);
+            roundedRect(ctx, drawX, drawY, drawW, drawH, radius);
             ctx.clip();
-            ctx.drawImage(entry.item.img, x, y, entry.w, entry.h);
+            ctx.drawImage(entry.item.img, drawX, drawY, drawW, drawH);
             ctx.restore();
           } else {
-            ctx.drawImage(entry.item.img, x, y, entry.w, entry.h);
+            ctx.drawImage(entry.item.img, drawX, drawY, drawW, drawH);
           }
         });
         return canvas;
@@ -742,13 +847,14 @@
           $("#stitchMeta").textContent = "";
           return;
         }
-        var canvas = makeStitchCanvas();
+        var layout = makeStitchLayout(0);
+        var canvas = makeStitchCanvas(stitch.previewMaxEdge);
         stitch.canvas = canvas;
         var preview = $("#stitchPreview");
         preview.innerHTML = "";
         preview.appendChild(canvas);
         $("#stitchDownload").disabled = false;
-        $("#stitchMeta").innerHTML = "<span>" + t("output") + " <strong>" + canvas.width + " x " + canvas.height + " px</strong></span>";
+        $("#stitchMeta").innerHTML = "<span>" + t("output") + " <strong>" + layout.fullW + " x " + layout.fullH + " px</strong></span>";
       }
 
       setupUpload($("#stitchUpload"), $("#stitchFiles"), function (files) {
@@ -758,28 +864,29 @@
         Promise.all(selected.map(loadImage)).then(function (results) {
           stitch.images = stitch.images.concat(results);
           renderStitchList();
-          updateStitchPreview();
+          queueStitchPreview();
         }).catch(function (error) {
           alert(error.message);
         });
       });
 
       ["stitchDirection", "stitchAlign", "stitchFit", "stitchSize", "stitchGap", "stitchRadius", "stitchBg", "stitchFormat"].forEach(function (id) {
-        $("#" + id).addEventListener("input", updateStitchPreview);
-        $("#" + id).addEventListener("change", updateStitchPreview);
+        $("#" + id).addEventListener("input", queueStitchPreview);
+        $("#" + id).addEventListener("change", queueStitchPreview);
       });
 
       $("#stitchClear").addEventListener("click", function () {
         stitch.images = [];
         stitch.canvas = null;
         renderStitchList();
-        updateStitchPreview();
+        queueStitchPreview();
       });
 
       $("#stitchDownload").addEventListener("click", function () {
-        if (!stitch.canvas) return;
+        if (stitch.images.length === 0) return;
         var settings = getStitchSettings();
-        canvasToBlob(stitch.canvas, settings.format, .92).then(function (blob) {
+        var outputCanvas = makeStitchCanvas(0);
+        canvasToBlob(outputCanvas, settings.format, .92).then(function (blob) {
           downloadBlob(blob, safeName(stitch.images[0] && stitch.images[0].file, "-stitch", settings.format));
         });
       });

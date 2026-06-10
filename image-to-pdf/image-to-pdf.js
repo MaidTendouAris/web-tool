@@ -265,6 +265,22 @@
         if (!images.length)
             setStatus("waitingInput");
     }
+    function getImageIndexFromItem(item) {
+        const value = item && item.dataset ? Number(item.dataset.index) : NaN;
+        return Number.isFinite(value) ? value : -1;
+    }
+    function updateImageDragIndexes() {
+        $$("#imageList .image-item").forEach((item, index) => {
+            item.dataset.index = String(index);
+        });
+    }
+    function finishImageDrag() {
+        draggedId = "";
+        $("#imageList").classList.remove("drag-sorting");
+        $$("#imageList .image-item").forEach((item) => {
+            item.classList.remove("dragging", "drag-over");
+        });
+    }
     function renderImages() {
         const list = $("#imageList");
         list.innerHTML = "";
@@ -273,6 +289,7 @@
             item.className = "image-item";
             item.draggable = true;
             item.dataset.id = entry.id;
+            item.dataset.index = String(index);
             item.innerHTML = [
                 '<img class="thumb" src="' + entry.url + '" alt="">',
                 "<div>",
@@ -285,25 +302,45 @@
                 '<button class="icon-btn" type="button" data-action="remove" aria-label="' + t("remove") + '">×</button>',
                 "</div>"
             ].join("");
-            item.addEventListener("dragstart", () => {
+            item.addEventListener("dragstart", (event) => {
                 draggedId = entry.id;
+                $("#imageList").classList.add("drag-sorting");
                 item.classList.add("dragging");
+                if (event.dataTransfer) {
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", entry.id);
+                }
             });
             item.addEventListener("dragend", () => {
-                draggedId = "";
-                item.classList.remove("dragging");
+                finishImageDrag();
+                renderImages();
             });
-            item.addEventListener("dragover", (event) => event.preventDefault());
-            item.addEventListener("drop", (event) => {
+            item.addEventListener("dragover", (event) => {
                 event.preventDefault();
                 if (!draggedId || draggedId === entry.id)
                     return;
                 const from = images.findIndex((image) => image.id === draggedId);
-                const to = images.findIndex((image) => image.id === entry.id);
-                if (from < 0 || to < 0)
+                const to = getImageIndexFromItem(item);
+                if (from < 0 || to < 0 || from === to)
                     return;
+                item.classList.add("drag-over");
                 const [moved] = images.splice(from, 1);
                 images.splice(to, 0, moved);
+                const draggedItem = $("#imageList .image-item.dragging");
+                if (draggedItem) {
+                    if (from < to)
+                        item.after(draggedItem);
+                    else
+                        item.before(draggedItem);
+                    updateImageDragIndexes();
+                }
+            });
+            item.addEventListener("dragleave", () => {
+                item.classList.remove("drag-over");
+            });
+            item.addEventListener("drop", (event) => {
+                event.preventDefault();
+                finishImageDrag();
                 renderImages();
             });
             item.querySelectorAll("[data-action]").forEach((button) => {
@@ -319,6 +356,7 @@
             });
             list.appendChild(item);
         });
+        updateImageDragIndexes();
     }
     function openResourceCacheDb() {
         return new Promise((resolve, reject) => {
