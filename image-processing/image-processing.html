@@ -168,6 +168,8 @@
       gap: 20px;
       align-items: end;
       margin: 20px 0;
+      position: relative;
+      z-index: 2;
     }
 
     h1 {
@@ -189,6 +191,8 @@
       border: 1px solid var(--line);
       border-radius: 8px;
       background: var(--soft);
+      position: relative;
+      z-index: 3;
     }
 
     .tabs button, .segmented button {
@@ -221,6 +225,8 @@
 
     .tool-panel {
       display: none;
+      position: relative;
+      z-index: 1;
     }
 
     .tool-panel.active {
@@ -504,7 +510,7 @@
 
     .image-item {
       display: grid;
-      grid-template-columns: 56px minmax(0, 1fr) auto;
+      grid-template-columns: 22px 56px minmax(0, 1fr) auto;
       gap: 10px;
       align-items: center;
       min-height: 70px;
@@ -514,8 +520,21 @@
       background: var(--panel);
     }
 
+    .image-item.drag-over {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 4px var(--ring);
+    }
+
     .image-item.dragging {
       opacity: .55;
+    }
+
+    .drag-handle {
+      color: var(--muted);
+      cursor: grab;
+      font-weight: 900;
+      text-align: center;
+      user-select: none;
     }
 
     .thumb {
@@ -587,7 +606,7 @@
         <span id="homeText">工具集</span>
       </a>
       <div class="top-actions">
-        <span class="version-badge">V1.0.0</span>
+        <span class="version-badge">V1.1.0</span>
         <div class="language" aria-label="Language">
           <button type="button" data-lang="zh">中文</button>
           <button type="button" data-lang="en">EN</button>
@@ -698,6 +717,9 @@
               <select id="stitchDirection">
                 <option value="vertical">纵向</option>
                 <option value="horizontal">横向</option>
+                <option value="grid2">2×2</option>
+                <option value="grid3">3×3</option>
+                <option value="grid4">4×4</option>
               </select>
             </label>
             <label>

@@ -396,6 +396,11 @@
       color: #f0b45b;
     }
 
+    .resource-status.downloading {
+      border-color: color-mix(in srgb, var(--blue) 70%, var(--line));
+      color: var(--blue);
+    }
+
     .resource-download {
       display: inline-flex;
       align-items: center;
@@ -409,6 +414,11 @@
       cursor: pointer;
       font-weight: 800;
       white-space: nowrap;
+    }
+
+    .resource-download:disabled {
+      cursor: wait;
+      opacity: .58;
     }
 
     .resource-item > div:last-child {
@@ -572,7 +582,7 @@
   <main class="shell">
     <div class="topbar">
       <a class="github-link" href="https://github.com/MaidTendouAris/web-tool" target="_blank" rel="noopener noreferrer">GitHub</a>
-      <span class="version-badge">V1.0.0</span>
+      <span class="version-badge">V1.1.0</span>
       <div class="language" aria-label="Language">
         <button type="button" data-lang="zh">中文</button>
         <button type="button" data-lang="en">EN</button>

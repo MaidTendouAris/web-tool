@@ -33,9 +33,12 @@
           imageList: "图片列表",
           clear: "清空",
           stitchSettings: "拼接设置",
-          direction: "方向",
+          direction: "布局",
           vertical: "纵向",
           horizontal: "横向",
+          grid2: "2×2",
+          grid3: "3×3",
+          grid4: "4×4",
           align: "对齐",
           center: "居中",
           start: "起始",
@@ -93,9 +96,12 @@
           imageList: "Image List",
           clear: "Clear",
           stitchSettings: "Stitch Settings",
-          direction: "Direction",
+          direction: "Layout",
           vertical: "Vertical",
           horizontal: "Horizontal",
+          grid2: "2×2",
+          grid3: "3×3",
+          grid4: "4×4",
           align: "Align",
           center: "Center",
           start: "Start",
@@ -224,7 +230,7 @@
         setInputLabel("compressQuality", "quality");
         setInputLabel("maxWidth", "maxWidth");
         setInputLabel("maxHeight", "maxHeight");
-        setOptions("#stitchDirection", ["vertical", "horizontal"]);
+        setOptions("#stitchDirection", ["vertical", "horizontal", "grid2", "grid3", "grid4"]);
         setOptions("#stitchAlign", ["center", "start", "end"]);
         setOptions("#stitchFit", ["fitNone", "fitWidth", "fitHeight"]);
         if (!crop.img) $("#cropPreview").innerHTML = '<span class="empty">' + t("waitingImage") + "</span>";
@@ -342,11 +348,16 @@
         container.appendChild(img);
       }
 
-      $$(".tabs button").forEach(function (button) {
-        button.addEventListener("click", function () {
-          $$(".tabs button").forEach(function (item) { item.classList.toggle("active", item === button); });
-          $$(".tool-panel").forEach(function (panel) { panel.classList.toggle("active", panel.id === "panel-" + button.dataset.tool); });
-        });
+      function setTool(tool) {
+        $$(".tabs button").forEach(function (item) { item.classList.toggle("active", item.dataset.tool === tool); });
+        $$(".tool-panel").forEach(function (panel) { panel.classList.toggle("active", panel.id === "panel-" + tool); });
+      }
+
+      $(".tabs").addEventListener("click", function (event) {
+        var target = event.target;
+        var button = target && target.closest ? target.closest("button[data-tool]") : null;
+        if (!button) return;
+        setTool(button.dataset.tool);
       });
 
       var crop = {
@@ -584,6 +595,7 @@
           li.className = "image-item";
           li.draggable = true;
           li.innerHTML = [
+            '<span class="drag-handle" aria-hidden="true">⋮⋮</span>',
             '<img class="thumb" src="' + item.dataUrl + '" alt="">',
             "<div>",
             '<div class="name">' + escapeHtml(item.file.name) + "</div>",
@@ -602,10 +614,18 @@
           li.addEventListener("dragend", function () {
             stitch.draggedIndex = null;
             li.classList.remove("dragging");
+            $$("#stitchList .image-item").forEach(function (item) { item.classList.remove("drag-over"); });
           });
-          li.addEventListener("dragover", function (event) { event.preventDefault(); });
+          li.addEventListener("dragover", function (event) {
+            event.preventDefault();
+            if (stitch.draggedIndex !== null && stitch.draggedIndex !== index) li.classList.add("drag-over");
+          });
+          li.addEventListener("dragleave", function () {
+            li.classList.remove("drag-over");
+          });
           li.addEventListener("drop", function (event) {
             event.preventDefault();
+            li.classList.remove("drag-over");
             moveStitchItem(stitch.draggedIndex, index);
           });
           li.querySelector(".mini-actions").addEventListener("click", function (event) {
@@ -627,6 +647,7 @@
       function makeStitchCanvas() {
         var settings = getStitchSettings();
         var isVertical = settings.direction === "vertical";
+        var gridSize = settings.direction === "grid2" ? 2 : settings.direction === "grid3" ? 3 : settings.direction === "grid4" ? 4 : 0;
         var items = stitch.images.map(function (item) {
           var w = item.img.naturalWidth;
           var h = item.img.naturalHeight;
@@ -640,6 +661,36 @@
           }
           return { item: item, w: Math.round(w), h: Math.round(h) };
         });
+
+        if (gridSize > 0) {
+          var rows = Math.ceil(items.length / gridSize);
+          var cellW = Math.max.apply(null, items.map(function (item) { return item.w; }));
+          var cellH = Math.max.apply(null, items.map(function (item) { return item.h; }));
+          var gridCanvas = document.createElement("canvas");
+          gridCanvas.width = Math.max(1, gridSize * cellW + Math.max(0, gridSize - 1) * settings.gap);
+          gridCanvas.height = Math.max(1, rows * cellH + Math.max(0, rows - 1) * settings.gap);
+          var gridCtx = gridCanvas.getContext("2d");
+          gridCtx.fillStyle = settings.bg;
+          gridCtx.fillRect(0, 0, gridCanvas.width, gridCanvas.height);
+          items.forEach(function (entry, index) {
+            var col = index % gridSize;
+            var row = Math.floor(index / gridSize);
+            var cellX = col * (cellW + settings.gap);
+            var cellY = row * (cellH + settings.gap);
+            var x = cellX + (settings.align === "center" ? (cellW - entry.w) / 2 : settings.align === "end" ? cellW - entry.w : 0);
+            var y = cellY + (cellH - entry.h) / 2;
+            if (settings.radius > 0) {
+              gridCtx.save();
+              roundedRect(gridCtx, x, y, entry.w, entry.h, settings.radius);
+              gridCtx.clip();
+              gridCtx.drawImage(entry.item.img, x, y, entry.w, entry.h);
+              gridCtx.restore();
+            } else {
+              gridCtx.drawImage(entry.item.img, x, y, entry.w, entry.h);
+            }
+          });
+          return gridCanvas;
+        }
 
         var gapTotal = Math.max(0, items.length - 1) * settings.gap;
         var canvasW = isVertical
@@ -846,5 +897,3 @@
       applyTheme(resolveInitialTheme());
       applyLanguage(currentLanguage);
     })();
-
-export {};

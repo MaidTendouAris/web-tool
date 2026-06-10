@@ -52,6 +52,7 @@ const LANGUAGE_TABLE = {
         resourceReady: "已就绪",
         resourceMissing: "缺失",
         resourceError: "检查失败",
+        resourceDownloading: "下载中",
         resourceDownload: "下载",
         resourceDownloadToCache: "下载到缓存",
         resourceImport: "导入",
@@ -119,6 +120,7 @@ const LANGUAGE_TABLE = {
         resourceReady: "Ready",
         resourceMissing: "Missing",
         resourceError: "Check failed",
+        resourceDownloading: "Downloading",
         resourceDownload: "Download",
         resourceDownloadToCache: "Download to cache",
         resourceImport: "Import",
@@ -171,6 +173,7 @@ const resourceList = document.getElementById("resourceList");
 const cards = Array.from(document.querySelectorAll(".tool-card"));
 let currentLanguage = resolveInitialLanguage();
 const cacheResourceStates = new Map();
+const cacheResourceDownloadProgress = new Map();
 function resolveInitialLanguage() {
     const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
     if (saved === "zh" || saved === "en")
@@ -253,13 +256,17 @@ function resolveInitialTheme() {
 function supportsResourceCache() {
     return "indexedDB" in window;
 }
-function getResourceStatusText(state) {
+function getResourceStatusText(resource, state) {
     if (state === "ready")
         return getText("resourceReady");
     if (state === "missing")
         return getText("resourceMissing");
     if (state === "error")
         return getText("resourceError");
+    if (state === "downloading") {
+        const progress = cacheResourceDownloadProgress.get(resource.id);
+        return typeof progress === "number" ? progress + "%" : getText("resourceDownloading");
+    }
     return getText("resourcePending");
 }
 function renderResourceSupport() {
@@ -282,8 +289,9 @@ function renderResources() {
     RESOURCE_TABLE.forEach((resource) => {
         const state = cacheResourceStates.get(resource.id) || "pending";
         const pathText = getText("resourceCacheHint") + resource.id;
-        const primaryAction = '<button class="resource-download" type="button" data-resource-action="import" data-resource-id="' + resource.id + '">' + getText("resourceImport") + "</button>"
-            + '<button class="resource-download" type="button" data-resource-action="download-cache" data-resource-id="' + resource.id + '">' + getText("resourceDownloadToCache") + "</button>";
+        const disabledAttribute = state === "downloading" ? " disabled" : "";
+        const primaryAction = '<button class="resource-download" type="button" data-resource-action="import" data-resource-id="' + resource.id + '"' + disabledAttribute + ">" + getText("resourceImport") + "</button>"
+            + '<button class="resource-download" type="button" data-resource-action="download-cache" data-resource-id="' + resource.id + '"' + disabledAttribute + ">" + getText("resourceDownloadToCache") + "</button>";
         const secondaryAction = state === "ready"
             ? '<button class="resource-download" type="button" data-resource-action="clear" data-resource-id="' + resource.id + '">' + getText("resourceClearCache") + "</button>"
             : "";
@@ -298,7 +306,7 @@ function renderResources() {
             '<div class="resource-path">' + pathText + "</div>",
             "</div>",
             "<div>",
-            '<div class="resource-status ' + state + '">' + getResourceStatusText(state) + "</div>",
+            '<div class="resource-status ' + state + '">' + getResourceStatusText(resource, state) + "</div>",
             primaryAction,
             secondaryAction,
             "</div>"
@@ -310,6 +318,8 @@ function renderResources() {
     });
 }
 async function handleResourceAction(resource, action) {
+    if (cacheResourceStates.get(resource.id) === "downloading")
+        return;
     if (action === "download-cache")
         await downloadResourceToCache(resource);
     if (action === "import")
@@ -400,16 +410,59 @@ async function importManagedResource(resource) {
         alert(getText("resourceImportFailed"));
     }
 }
+async function readResponseContentWithProgress(resource, response) {
+    const total = Number(response.headers.get("content-length")) || 0;
+    if (total <= 0) {
+        cacheResourceDownloadProgress.set(resource.id, null);
+        renderResources();
+    }
+    if (!response.body) {
+        cacheResourceDownloadProgress.set(resource.id, null);
+        renderResources();
+        return response.arrayBuffer();
+    }
+    const reader = response.body.getReader();
+    const chunks = [];
+    let received = 0;
+    let lastPercent = -1;
+    while (true) {
+        const result = await reader.read();
+        if (result.done)
+            break;
+        if (!result.value)
+            continue;
+        chunks.push(result.value);
+        received += result.value.byteLength;
+        if (total > 0) {
+            const percent = Math.min(99, Math.floor((received / total) * 100));
+            if (percent !== lastPercent) {
+                lastPercent = percent;
+                cacheResourceDownloadProgress.set(resource.id, percent);
+                renderResources();
+            }
+        }
+    }
+    const content = new Uint8Array(received);
+    let offset = 0;
+    chunks.forEach((chunk) => {
+        content.set(chunk, offset);
+        offset += chunk.byteLength;
+    });
+    return content.buffer;
+}
 async function downloadResourceToCache(resource) {
     if (!supportsResourceCache()) {
         alert(getText("resourceCacheUnsupported"));
         return;
     }
+    cacheResourceStates.set(resource.id, "downloading");
+    cacheResourceDownloadProgress.set(resource.id, 0);
+    renderResources();
     try {
         const response = await fetch(resource.downloadUrl);
         if (!response.ok)
             throw new Error(String(response.status));
-        const content = await response.arrayBuffer();
+        const content = await readResponseContentWithProgress(resource, response);
         await runResourceCacheTransaction("readwrite", (store) => store.put({
             id: resource.id,
             fileName: resource.fileName,
@@ -418,10 +471,14 @@ async function downloadResourceToCache(resource) {
             size: content.byteLength,
             updatedAt: Date.now()
         }));
+        cacheResourceDownloadProgress.delete(resource.id);
         cacheResourceStates.set(resource.id, "ready");
         renderResources();
     }
     catch (_error) {
+        cacheResourceDownloadProgress.delete(resource.id);
+        cacheResourceStates.set(resource.id, await checkCachedResource(resource));
+        renderResources();
         alert(getText("resourceDownloadFailed"));
     }
 }
@@ -440,6 +497,8 @@ async function clearCachedResource(resource) {
 }
 async function checkResources() {
     await Promise.all(RESOURCE_TABLE.map(async (resource) => {
+        if (cacheResourceStates.get(resource.id) === "downloading")
+            return;
         cacheResourceStates.set(resource.id, await checkCachedResource(resource));
     }));
     renderResources();
