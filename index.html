@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Web Tool</title>
+  <title>web-tools</title>
   <script>
     (function () {
       try {
-        var saved = localStorage.getItem("web-tool-theme");
+        var saved = localStorage.getItem("web-tools-theme") || localStorage.getItem("web-tool-theme");
         var theme = saved === "dark" || saved === "light"
           ? saved
           : window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
@@ -595,7 +595,7 @@
 <body>
   <main class="shell">
     <div class="topbar">
-      <a class="github-link" href="https://github.com/MaidTendouAris/web-tool" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a class="github-link" href="https://github.com/MaidTendouAris/web-tools" target="_blank" rel="noopener noreferrer">GitHub</a>
       <span class="version-badge">V1.1.1</span>
       <div class="language" aria-label="Language">
         <button type="button" data-lang="zh">中文</button>
@@ -609,7 +609,7 @@
     <header>
       <div class="brand">
         <span class="eyebrow" data-i18n="eyebrow">Browser only</span>
-        <h1 data-i18n="title">Web Tool</h1>
+        <h1 data-i18n="title">web-tools</h1>
         <p class="lead" data-i18n="lead">一个只依赖浏览器的本地工具集合。打开 HTML 文件即可使用，图片和数据都留在当前浏览器里处理。</p>
       </div>
       <div class="status" aria-label="项目特点" data-i18n-attr="aria-label:statusLabel">

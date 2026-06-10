@@ -1,10 +1,12 @@
 "use strict";
 (function () {
     "use strict";
-    var LANGUAGE_STORAGE_KEY = "web-tool-language";
-    var THEME_STORAGE_KEY = "web-tool-theme";
+    var LANGUAGE_STORAGE_KEY = "web-tools-language";
+    var THEME_STORAGE_KEY = "web-tools-theme";
+    var LEGACY_LANGUAGE_STORAGE_KEY = "web-tool-language";
+    var LEGACY_THEME_STORAGE_KEY = "web-tool-theme";
     var FFMPEG_WASM_FILE_NAME = "ffmpeg-core.wasm";
-    var RESOURCE_CACHE_DB_NAME = "web-tool-resource-cache";
+    var RESOURCE_CACHE_DB_NAME = "web-tools-resource-cache";
     var RESOURCE_CACHE_STORE_NAME = "resources";
     var RESOURCE_CACHE_DB_VERSION = 1;
     var FFMPEG_CORE_JS_RESOURCE_ID = "ffmpeg-core-js";
@@ -203,7 +205,7 @@
         return (TEXT[currentLanguage] && TEXT[currentLanguage][key]) || key;
     }
     function resolveInitialLanguage() {
-        var saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+        var saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) || localStorage.getItem(LEGACY_LANGUAGE_STORAGE_KEY);
         if (saved === "zh" || saved === "en")
             return saved;
         var browserLanguage = (navigator.language || "").toLowerCase();
@@ -217,7 +219,7 @@
         return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     }
     function resolveInitialTheme() {
-        var saved = localStorage.getItem(THEME_STORAGE_KEY);
+        var saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
         if (saved === "dark" || saved === "light")
             return saved;
         return getSystemTheme();
@@ -1163,7 +1165,7 @@
     });
     if (window.matchMedia) {
         window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (event) {
-            var saved = localStorage.getItem(THEME_STORAGE_KEY);
+            var saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
             if (saved === "dark" || saved === "light")
                 return;
             applyTheme(event.matches ? "dark" : "light");

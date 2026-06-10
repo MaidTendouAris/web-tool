@@ -83,9 +83,9 @@ type ManagedResource = {
 const LANGUAGE_TABLE: Record<SupportedLanguage, LanguagePack> = {
   zh: {
     htmlLang: "zh-CN",
-    documentTitle: "Web Tool",
+    documentTitle: "web-tools",
     eyebrow: "Browser only",
-    title: "Web Tool",
+    title: "web-tools",
     lead: "一个只依赖浏览器的本地工具集合。打开 HTML 文件即可使用，图片和数据都留在当前浏览器里处理。",
     statusLabel: "项目特点",
     statusServerless: "无服务端",
@@ -151,9 +151,9 @@ const LANGUAGE_TABLE: Record<SupportedLanguage, LanguagePack> = {
   },
   en: {
     htmlLang: "en",
-    documentTitle: "Web Tool",
+    documentTitle: "web-tools",
     eyebrow: "Browser only",
-    title: "Web Tool",
+    title: "web-tools",
     lead: "A local collection of browser-only tools. Open the HTML files directly; images and data stay inside your current browser.",
     statusLabel: "Project traits",
     statusServerless: "No server",
@@ -219,9 +219,11 @@ const LANGUAGE_TABLE: Record<SupportedLanguage, LanguagePack> = {
   }
 };
 
-const LANGUAGE_STORAGE_KEY = "web-tool-language";
-const THEME_STORAGE_KEY = "web-tool-theme";
-const RESOURCE_CACHE_DB_NAME = "web-tool-resource-cache";
+const LANGUAGE_STORAGE_KEY = "web-tools-language";
+const THEME_STORAGE_KEY = "web-tools-theme";
+const LEGACY_LANGUAGE_STORAGE_KEY = "web-tool-language";
+const LEGACY_THEME_STORAGE_KEY = "web-tool-theme";
+const RESOURCE_CACHE_DB_NAME = "web-tools-resource-cache";
 const RESOURCE_CACHE_STORE_NAME = "resources";
 const RESOURCE_CACHE_DB_VERSION = 1;
 
@@ -261,7 +263,7 @@ const cacheResourceStates = new Map<string, ResourceState>();
 const cacheResourceDownloadProgress = new Map<string, number | null>();
 
 function resolveInitialLanguage(): SupportedLanguage {
-  const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+  const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) || localStorage.getItem(LEGACY_LANGUAGE_STORAGE_KEY);
   if (saved === "zh" || saved === "en") return saved;
 
   const browserLanguage = (navigator.language || "").toLowerCase();
@@ -344,7 +346,7 @@ function applyTheme(theme: "dark" | "light"): void {
 }
 
 function resolveInitialTheme(): "dark" | "light" {
-  const saved = localStorage.getItem(THEME_STORAGE_KEY);
+  const saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
   if (saved === "dark" || saved === "light") return saved;
   return getSystemTheme();
 }
@@ -639,7 +641,7 @@ refreshResourcesButton?.addEventListener("click", async () => {
 });
 
 window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
-  const saved = localStorage.getItem(THEME_STORAGE_KEY);
+  const saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
   if (saved === "dark" || saved === "light") return;
   applyTheme(event.matches ? "dark" : "light");
 });

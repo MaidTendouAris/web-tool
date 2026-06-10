@@ -4,8 +4,10 @@
       var $ = function (selector) { return document.querySelector(selector); };
       var $$ = function (selector) { return Array.from(document.querySelectorAll(selector)); };
 
-      var LANGUAGE_STORAGE_KEY = "web-tool-language";
-      var THEME_STORAGE_KEY = "web-tool-theme";
+      var LANGUAGE_STORAGE_KEY = "web-tools-language";
+      var THEME_STORAGE_KEY = "web-tools-theme";
+      var LEGACY_LANGUAGE_STORAGE_KEY = "web-tool-language";
+      var LEGACY_THEME_STORAGE_KEY = "web-tool-theme";
       var TEXT = {
         zh: {
           htmlLang: "zh-CN",
@@ -137,7 +139,7 @@
       var currentLanguage = resolveInitialLanguage();
 
       function resolveInitialLanguage() {
-        var saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+        var saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) || localStorage.getItem(LEGACY_LANGUAGE_STORAGE_KEY);
         if (saved === "zh" || saved === "en") return saved;
         var browserLanguage = (navigator.language || "").toLowerCase();
         if (browserLanguage.indexOf("zh") === 0) return "zh";
@@ -251,7 +253,7 @@
       }
 
       function resolveInitialTheme() {
-        var saved = localStorage.getItem(THEME_STORAGE_KEY);
+        var saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
         if (saved === "dark" || saved === "light") return saved;
         return getSystemTheme();
       }
@@ -888,7 +890,7 @@
 
       if (window.matchMedia) {
         window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (event) {
-          var saved = localStorage.getItem(THEME_STORAGE_KEY);
+          var saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
           if (saved === "dark" || saved === "light") return;
           applyTheme(event.matches ? "dark" : "light");
         });

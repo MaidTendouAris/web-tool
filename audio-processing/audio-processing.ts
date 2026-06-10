@@ -3,9 +3,11 @@
 
   type SupportedLanguage = "zh" | "en";
 
-  const LANGUAGE_STORAGE_KEY = "web-tool-language";
-  const THEME_STORAGE_KEY = "web-tool-theme";
-  const RESOURCE_CACHE_DB_NAME = "web-tool-resource-cache";
+  const LANGUAGE_STORAGE_KEY = "web-tools-language";
+  const THEME_STORAGE_KEY = "web-tools-theme";
+  const LEGACY_LANGUAGE_STORAGE_KEY = "web-tool-language";
+  const LEGACY_THEME_STORAGE_KEY = "web-tool-theme";
+  const RESOURCE_CACHE_DB_NAME = "web-tools-resource-cache";
   const RESOURCE_CACHE_STORE_NAME = "resources";
   const RESOURCE_CACHE_DB_VERSION = 1;
   const FFMPEG_CORE_JS_RESOURCE_ID = "ffmpeg-core-js";
@@ -202,7 +204,7 @@
   }
 
   function resolveInitialLanguage(): SupportedLanguage {
-    var saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    var saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) || localStorage.getItem(LEGACY_LANGUAGE_STORAGE_KEY);
     if (saved === "zh" || saved === "en") return saved;
     var browserLanguage = (navigator.language || "").toLowerCase();
     if (browserLanguage.startsWith("zh")) return "zh";
@@ -211,7 +213,7 @@
   }
 
   function resolveInitialTheme() {
-    var saved = localStorage.getItem(THEME_STORAGE_KEY);
+    var saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
     if (saved === "dark" || saved === "light") return saved;
     return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
@@ -948,7 +950,7 @@
   });
 
   window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener("change", function (event) {
-    var saved = localStorage.getItem(THEME_STORAGE_KEY);
+      var saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
     if (saved === "dark" || saved === "light") return;
     applyTheme(event.matches ? "dark" : "light");
   });

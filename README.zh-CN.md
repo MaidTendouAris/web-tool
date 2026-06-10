@@ -1,14 +1,14 @@
 [English](./README.md)    [中文](./README.zh-CN.md)
 
-# Web Tool (中文)
+# web-tools (中文)
 
-Web Tool 是一个只依赖浏览器的本地工具集合。项目没有后端，也不要求启动服务器；在现代浏览器中打开 `index.html` 即可使用。
+web-tools 是一个只依赖浏览器的本地工具集合。项目没有后端，也不要求启动服务器；在现代浏览器中打开 `index.html` 即可使用。
 
 应用会在浏览器本地处理用户文件。图片、数据和音视频输入不会被本项目上传到远程服务。
 
 该项目已托管至Github Pages，你可以访问该链接直接使用
 
-https://maidtendouaris.github.io/web-tool/
+https://maidtendouaris.github.io/web-tools/
 
 ## 功能
 

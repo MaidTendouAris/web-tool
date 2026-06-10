@@ -1,14 +1,14 @@
 [English](./README.md)    [中文](./README.zh-CN.md)
 
-# Web Tool
+# web-tools
 
-Web Tool is a browser-only collection of small utilities. It has no backend and no required server runtime: open `index.html` in a modern browser and the tools run locally.
+web-tools is a browser-only collection of small utilities. It has no backend and no required server runtime: open `index.html` in a modern browser and the tools run locally.
 
 The project keeps user files in the browser session. Image, data, and media inputs are not uploaded to a remote service by this application.
 
 This project has been hosted on GitHub Pages; you can visit the link to use it directly.
 
-https://maidtendouaris.github.io/web-tool/
+https://maidtendouaris.github.io/web-tools/
 
 ## Features
 
