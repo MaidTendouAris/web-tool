@@ -17,7 +17,7 @@ https://maidtendouaris.github.io/web-tools/
 - Resource Management for importing or downloading runtime libraries into browser cache.
 - Password Generator: generate local random passwords and passphrases with length, character-set, similar-character exclusion, batch output, strength hints, and copy controls.
 - Image Processing: crop, stitch, and compress images with local preview and export.
-- Images to PDF: convert JPG/PNG images into a PDF with drag sorting, page sizing, fit modes, margins, and local download.
+- PDF Tools: convert images to PDF, merge or split PDFs, reorder/delete/rotate pages, add watermarks/page numbers/headers/footers, and inspect or clear metadata.
 - Audio Processing: convert MP3/AAC/OGG/M4A and other formats, trim ranges, remux, edit metadata, preview waveforms, and apply gain.
 - Data Unit Converter: convert common storage and transfer-rate units.
 - Video Processing: read metadata, extract audio, remux containers, clip video ranges, stitch compatible videos, and generate GIFs with preview timelines.
@@ -29,7 +29,7 @@ https://maidtendouaris.github.io/web-tools/
 - FFmpeg.wasm core files for video processing:
   - `ffmpeg-core.js`
   - `ffmpeg-core.wasm`
-- pdf-lib static file for image-to-PDF generation:
+- pdf-lib static file for PDF generation and editing:
   - `pdf-lib.min.js`
 
 The repository does not include or depend on a `resources` directory. Use the Resource Management section on `index.html` to import local runtime files or download them into IndexedDB browser cache. After that, tools load cached libraries automatically.
@@ -66,7 +66,7 @@ tsc --ignoreConfig --noEmit --strict false --noImplicitAny false --target ES2020
 - FFmpeg.wasm and pdf-lib runtime files are not vendored in this repository.
 - Video processing expects `ffmpeg-core.js` and `ffmpeg-core.wasm` to be present in browser cache, managed from the entry page.
 - Audio processing expects `ffmpeg-core.js` and `ffmpeg-core.wasm` to be present in browser cache, managed from the entry page.
-- Image-to-PDF generation expects `pdf-lib.min.js` to be present in browser cache, managed from the entry page.
+- PDF tools expect `pdf-lib.min.js` to be present in browser cache, managed from the entry page.
 - This workspace currently does not require a package manager, bundler, or web server.
 
 ## License

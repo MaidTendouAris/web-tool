@@ -17,7 +17,7 @@ https://maidtendouaris.github.io/web-tools/
 - 资源管理：将额外运行库导入或下载到浏览器缓存。
 - 密码生成器：在本地生成随机密码和密码短语，支持长度、字符集、排除相似字符、批量生成、强度提示和复制。
 - 图片处理：裁剪、拼接、压缩，支持本地预览和导出。
-- 图片转 PDF：将 JPG/PNG 图片按拖拽排序合成为 PDF，支持页面尺寸、适配方式、边距和本地下载。
+- PDF 工具：支持图片转 PDF、PDF 合并拆分、页面排序删除旋转、水印页码页眉页脚，以及元数据查看和清理。
 - 音频处理：支持 MP3/AAC/OGG/M4A 等格式转换、片段裁剪、转封装、元数据编辑、波形预览和音量增益。
 - 数据单位转换：转换常见容量和传输速率单位。
 - 视频处理：读取元数据、提取音频、转封装、截取片段、拼接兼容视频、生成 GIF，并支持预览时间轴。
@@ -29,7 +29,7 @@ https://maidtendouaris.github.io/web-tools/
 - 视频处理需要 FFmpeg.wasm 核心文件：
   - `ffmpeg-core.js`
   - `ffmpeg-core.wasm`
-- 图片转 PDF 需要 pdf-lib 静态文件：
+- PDF 工具需要 pdf-lib 静态文件：
   - `pdf-lib.min.js`
 
 仓库不包含、也不依赖 `resources` 目录。请在 `index.html` 的"资源管理"区域中导入本地运行文件，或下载到 IndexedDB 浏览器缓存。完成后，工具会自动加载缓存中的运行库。
@@ -51,7 +51,7 @@ https://maidtendouaris.github.io/web-tools/
 - 本仓库不内置 FFmpeg.wasm 或 pdf-lib 运行文件。
 - 视频处理需要先通过入口页将 `ffmpeg-core.js` 和 `ffmpeg-core.wasm` 放入浏览器缓存。
 - 音频处理需要先通过入口页将 `ffmpeg-core.js` 和 `ffmpeg-core.wasm` 放入浏览器缓存。
-- 图片转 PDF 需要先通过入口页将 `pdf-lib.min.js` 放入浏览器缓存。
+- PDF 工具需要先通过入口页将 `pdf-lib.min.js` 放入浏览器缓存。
 - 当前项目不依赖包管理器、打包器或 Web 服务器。
 
 ## 许可证

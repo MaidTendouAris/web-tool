@@ -14,20 +14,36 @@
     const TEXT = {
         zh: {
             htmlLang: "zh-CN",
-            title: "图片转 PDF",
+            title: "PDF 工具",
             home: "工具集",
             themeToggle: "切换主题",
-            lead: "将 JPG/PNG 图片按当前顺序合成为 PDF，所有处理都在浏览器本地完成。",
+            lead: "在浏览器本地完成图片转 PDF、合并拆分、页面管理、水印页码和元数据清理。",
             engineIdle: "尚未加载",
             engineLoading: "正在加载本地 pdf-lib...",
-            engineReady: "已加载，可开始生成",
+            engineReady: "已加载，可开始处理",
             engineLoadButton: "加载本地库",
             engineMissing: "未找到 pdf-lib.min.js，请先在入口页资源管理中导入或下载到浏览器缓存。",
-            inputTitle: "输入图片",
-            uploadTitle: "选择或拖放 JPG/PNG 图片",
-            uploadHint: "支持多选；拖拽列表项可调整 PDF 页面顺序。",
-            resourceWarning: "需要先在入口页资源管理中导入或下载 pdf-lib.min.js 到浏览器缓存。进入本页后仍需点击“加载本地库”或在生成时自动加载。",
-            settingsTitle: "生成设置",
+            inputTitle: "输入文件",
+            outputTitle: "输出",
+            settingsTitle: "处理设置",
+            noOutput: "暂无输出",
+            waitingInput: "等待输入文件",
+            resourceWarning: "需要先在入口页资源管理中导入或下载 pdf-lib.min.js 到浏览器缓存。进入本页后仍需点击“加载本地库”或在处理时自动加载。",
+            imagesTab: "图片转 PDF",
+            mergeTab: "合并与拆分",
+            pagesTab: "页面管理",
+            watermarkTab: "水印与页码",
+            metadataTab: "元数据清理",
+            imageUploadTitle: "选择或拖放 JPG/PNG 图片",
+            imageUploadHint: "支持多选；拖拽列表项可调整 PDF 页面顺序。",
+            pdfUploadTitle: "选择或拖放 PDF 文件",
+            pdfUploadHint: "多个 PDF 会按列表顺序本地合并；拆分使用列表中的第一个 PDF。",
+            pagesUploadTitle: "选择 PDF 以管理页面",
+            pagesUploadHint: "导入后可拖拽排序、删除或旋转页面。",
+            watermarkUploadTitle: "选择要处理的 PDF",
+            watermarkUploadHint: "可添加文字水印、图片水印、页码、页眉和页脚。",
+            metadataUploadTitle: "选择 PDF 查看元数据",
+            metadataUploadHint: "可查看并清除标题、作者、主题、关键词、创建工具等信息。",
             pageSize: "页面尺寸",
             pageImage: "跟随图片",
             pageA4Portrait: "A4 纵向",
@@ -37,42 +53,79 @@
             fitCover: "等比填充",
             margin: "边距（pt）",
             outputName: "输出文件名",
-            generate: "生成 PDF",
-            outputTitle: "输出",
-            logTitle: "日志",
-            waitingInput: "等待输入图片",
-            noOutput: "暂无输出",
-            loadingImages: "正在读取图片...",
-            readyImages: "已加载图片",
-            generating: "正在生成 PDF...",
-            done: "PDF 已生成",
-            failed: "生成失败",
+            generateImages: "生成 PDF",
+            range: "拆分页码范围",
+            mergePdf: "合并 PDF",
+            splitPdf: "按范围拆分",
+            exportPages: "导出页面",
+            pagePreviewNote: "缩略图显示页码、来源和旋转状态；所有页面操作都在本地完成。",
+            watermarkText: "文字水印",
+            watermarkOpacity: "水印透明度",
+            imageWatermark: "图片水印",
+            pageNumber: "页码",
+            pageNumberNone: "不添加",
+            pageNumberCenter: "底部居中",
+            pageNumberRight: "底部右侧",
+            header: "页眉",
+            footer: "页脚",
+            applyWatermark: "应用水印与页码",
+            clearMetadata: "清除元数据并导出",
             needImages: "请先选择 JPG 或 PNG 图片。",
+            needPdfs: "请先选择 PDF 文件。",
+            needOnePdf: "请先选择一个 PDF 文件。",
             unsupportedImage: "仅支持 JPG/PNG 图片：",
+            unsupportedPdf: "仅支持 PDF 文件：",
+            loadingFiles: "正在读取文件...",
+            ready: "已准备",
+            done: "处理完成",
+            failed: "处理失败",
             download: "下载 PDF",
-            pages: "页数",
+            pages: "页",
             size: "大小",
-            fileName: "文件名",
-            moveUp: "上移",
-            moveDown: "下移",
-            remove: "移除"
+            remove: "删除",
+            rotate: "旋转",
+            metadataEmpty: "未读取到元数据。",
+            titleMeta: "标题",
+            authorMeta: "作者",
+            subjectMeta: "主题",
+            keywordsMeta: "关键词",
+            creatorMeta: "创建工具",
+            producerMeta: "生成工具",
+            creationDateMeta: "创建时间",
+            modificationDateMeta: "修改时间"
         },
         en: {
             htmlLang: "en",
-            title: "Images to PDF",
+            title: "PDF Tools",
             home: "Tools",
             themeToggle: "Toggle theme",
-            lead: "Convert JPG/PNG images into a PDF in the current order. Everything runs locally in your browser.",
+            lead: "Work locally with images to PDF, merging, splitting, page management, watermarks, page numbers, and metadata cleanup.",
             engineIdle: "Not loaded",
             engineLoading: "Loading local pdf-lib...",
             engineReady: "Loaded and ready",
             engineLoadButton: "Load Local Library",
             engineMissing: "pdf-lib.min.js was not found. Import or download it into browser cache from Resource Management first.",
-            inputTitle: "Input Images",
-            uploadTitle: "Choose or drop JPG/PNG images",
-            uploadHint: "Multiple images are supported. Drag list items to adjust PDF page order.",
-            resourceWarning: "Import or download pdf-lib.min.js into browser cache from Resource Management first. This page still loads the local library before generating.",
-            settingsTitle: "PDF Settings",
+            inputTitle: "Input Files",
+            outputTitle: "Output",
+            settingsTitle: "Settings",
+            noOutput: "No output yet",
+            waitingInput: "Waiting for files",
+            resourceWarning: "Import or download pdf-lib.min.js into browser cache from Resource Management first. This page still loads the local library before processing.",
+            imagesTab: "Images to PDF",
+            mergeTab: "Merge & Split",
+            pagesTab: "Page Manager",
+            watermarkTab: "Watermark & Numbers",
+            metadataTab: "Metadata Cleanup",
+            imageUploadTitle: "Choose or drop JPG/PNG images",
+            imageUploadHint: "Multiple images are supported. Drag list items to adjust PDF page order.",
+            pdfUploadTitle: "Choose or drop PDF files",
+            pdfUploadHint: "PDFs merge in list order. Splitting uses the first PDF in the list.",
+            pagesUploadTitle: "Choose PDFs to manage pages",
+            pagesUploadHint: "After import, drag to reorder, delete, or rotate pages.",
+            watermarkUploadTitle: "Choose a PDF to process",
+            watermarkUploadHint: "Add text watermark, image watermark, page numbers, headers, and footers.",
+            metadataUploadTitle: "Choose a PDF to inspect metadata",
+            metadataUploadHint: "View and clear title, author, subject, keywords, creator, and producer fields.",
             pageSize: "Page size",
             pageImage: "Follow image",
             pageA4Portrait: "A4 portrait",
@@ -82,35 +135,64 @@
             fitCover: "Fill proportionally",
             margin: "Margin (pt)",
             outputName: "Output file name",
-            generate: "Generate PDF",
-            outputTitle: "Output",
-            logTitle: "Log",
-            waitingInput: "Waiting for images",
-            noOutput: "No output yet",
-            loadingImages: "Reading images...",
-            readyImages: "Images loaded",
-            generating: "Generating PDF...",
-            done: "PDF generated",
-            failed: "Generation failed",
+            generateImages: "Generate PDF",
+            range: "Split page ranges",
+            mergePdf: "Merge PDF",
+            splitPdf: "Split by range",
+            exportPages: "Export pages",
+            pagePreviewNote: "Thumbnails show page number, source, and rotation. All page operations run locally.",
+            watermarkText: "Text watermark",
+            watermarkOpacity: "Watermark opacity",
+            imageWatermark: "Image watermark",
+            pageNumber: "Page numbers",
+            pageNumberNone: "None",
+            pageNumberCenter: "Bottom center",
+            pageNumberRight: "Bottom right",
+            header: "Header",
+            footer: "Footer",
+            applyWatermark: "Apply watermark & numbers",
+            clearMetadata: "Clear metadata and export",
             needImages: "Choose JPG or PNG images first.",
+            needPdfs: "Choose PDF files first.",
+            needOnePdf: "Choose a PDF file first.",
             unsupportedImage: "Only JPG/PNG images are supported: ",
+            unsupportedPdf: "Only PDF files are supported: ",
+            loadingFiles: "Reading files...",
+            ready: "Ready",
+            done: "Done",
+            failed: "Failed",
             download: "Download PDF",
-            pages: "Pages",
+            pages: "pages",
             size: "Size",
-            fileName: "File name",
-            moveUp: "Move up",
-            moveDown: "Move down",
-            remove: "Remove"
+            remove: "Remove",
+            rotate: "Rotate",
+            metadataEmpty: "No metadata found.",
+            titleMeta: "Title",
+            authorMeta: "Author",
+            subjectMeta: "Subject",
+            keywordsMeta: "Keywords",
+            creatorMeta: "Creator",
+            producerMeta: "Producer",
+            creationDateMeta: "Creation date",
+            modificationDateMeta: "Modification date"
         }
     };
     const $ = function (selector) { return document.querySelector(selector); };
     const $$ = function (selector) { return Array.from(document.querySelectorAll(selector)); };
     let currentLanguage = resolveInitialLanguage();
+    let currentTool = "images";
     let images = [];
-    let draggedId = "";
+    let mergePdfs = [];
+    let managedPdfs = new Map();
+    let managedPages = [];
+    let watermarkPdf = null;
+    let metadataPdf = null;
+    let draggedImageId = "";
+    let draggedPageId = "";
+    let activePreviewUrl = "";
     let pdfLibPromise = null;
     let pdfLibReady = false;
-    let generating = false;
+    const pagePreviewCache = new Map();
     function t(key) {
         return (TEXT[currentLanguage] && TEXT[currentLanguage][key]) || key;
     }
@@ -149,10 +231,19 @@
         setText("#pageLead", "lead");
         setText("#loadPdfLibButton", "engineLoadButton");
         setText("#inputTitle", "inputTitle");
-        setText("#uploadTitle", "uploadTitle");
-        setText("#uploadHint", "uploadHint");
-        setText("#resourceWarning", "resourceWarning");
+        setText("#outputTitle", "outputTitle");
         setText("#settingsTitle", "settingsTitle");
+        setText("#resourceWarning", "resourceWarning");
+        setText("#imageUploadTitle", "imageUploadTitle");
+        setText("#imageUploadHint", "imageUploadHint");
+        setText("#pdfUploadTitle", "pdfUploadTitle");
+        setText("#pdfUploadHint", "pdfUploadHint");
+        setText("#pagesUploadTitle", "pagesUploadTitle");
+        setText("#pagesUploadHint", "pagesUploadHint");
+        setText("#watermarkUploadTitle", "watermarkUploadTitle");
+        setText("#watermarkUploadHint", "watermarkUploadHint");
+        setText("#metadataUploadTitle", "metadataUploadTitle");
+        setText("#metadataUploadHint", "metadataUploadHint");
         setText("#pageSizeLabel", "pageSize");
         setText('#pageSize option[value="image"]', "pageImage");
         setText('#pageSize option[value="a4-portrait"]', "pageA4Portrait");
@@ -161,18 +252,41 @@
         setText('#fitMode option[value="contain"]', "fitContain");
         setText('#fitMode option[value="cover"]', "fitCover");
         setText("#marginLabel", "margin");
-        setText("#outputNameLabel", "outputName");
-        setText("#generateButton", "generate");
-        setText("#outputTitle", "outputTitle");
-        setText("#logTitle", "logTitle");
+        setText("#imageOutputNameLabel", "outputName");
+        setText("#generateImagesButton", "generateImages");
+        setText("#rangeLabel", "range");
+        setText("#mergeOutputNameLabel", "outputName");
+        setText("#mergeButton", "mergePdf");
+        setText("#splitButton", "splitPdf");
+        setText("#pagesOutputNameLabel", "outputName");
+        setText("#exportPagesButton", "exportPages");
+        setText("#pagePreviewNote", "pagePreviewNote");
+        setText("#watermarkTextLabel", "watermarkText");
+        setText("#watermarkOpacityLabel", "watermarkOpacity");
+        setText("#pageNumberLabel", "pageNumber");
+        setText('#pageNumberMode option[value="none"]', "pageNumberNone");
+        setText('#pageNumberMode option[value="bottom-center"]', "pageNumberCenter");
+        setText('#pageNumberMode option[value="bottom-right"]', "pageNumberRight");
+        setText("#imageWatermarkLabel", "imageWatermark");
+        setText("#headerLabel", "header");
+        setText("#footerLabel", "footer");
+        setText("#watermarkOutputNameLabel", "outputName");
+        setText("#applyWatermarkButton", "applyWatermark");
+        setText("#metadataOutputNameLabel", "outputName");
+        setText("#clearMetadataButton", "clearMetadata");
+        const tabKeys = { images: "imagesTab", merge: "mergeTab", pages: "pagesTab", watermark: "watermarkTab", metadata: "metadataTab" };
+        $$(".tabs button").forEach((button) => {
+            button.textContent = t(tabKeys[button.dataset.tool] || "imagesTab");
+            button.classList.toggle("active", button.dataset.tool === currentTool);
+        });
         $$(".language button[data-lang]").forEach((button) => {
             button.classList.toggle("active", button.dataset.lang === language);
         });
         updateEngineStatus();
-        renderImages();
+        renderAll();
         if (!$("#resultBox").dataset.hasOutput)
             $("#resultBox").textContent = t("noOutput");
-        if (images.length === 0)
+        if (!$("#statusLine").dataset.locked)
             $("#statusLine").textContent = t("waitingInput");
     }
     function updateEngineStatus() {
@@ -183,12 +297,8 @@
         else
             $("#engineStatus").textContent = t("engineIdle");
     }
-    function appendLog(message) {
-        const time = new Date().toLocaleTimeString();
-        $("#logBox").textContent += "[" + time + "] " + message + "\n";
-        $("#logBox").scrollTop = $("#logBox").scrollHeight;
-    }
     function setStatus(key) {
+        $("#statusLine").dataset.locked = "";
         $("#statusLine").textContent = t(key);
     }
     function formatBytes(bytes) {
@@ -204,13 +314,19 @@
         return (index === 0 ? value.toFixed(0) : value.toFixed(2)) + " " + units[index];
     }
     function normalizePdfName(name) {
-        const cleaned = (name || "images.pdf").trim().replace(/[\\/:*?"<>|]+/g, "-");
+        const cleaned = (name || "output.pdf").trim().replace(/[\\/:*?"<>|]+/g, "-");
         return cleaned.toLowerCase().endsWith(".pdf") ? cleaned : cleaned + ".pdf";
     }
     function isSupportedImage(file) {
         const type = (file.type || "").toLowerCase();
         const name = file.name.toLowerCase();
         return type === "image/jpeg" || type === "image/png" || name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png");
+    }
+    function isPdf(file) {
+        return (file.type || "").toLowerCase() === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    }
+    function fileBytes(file) {
+        return file.arrayBuffer().then((buffer) => new Uint8Array(buffer));
     }
     function loadImageDimensions(file, url) {
         return new Promise((resolve, reject) => {
@@ -220,340 +336,655 @@
             image.src = url;
         });
     }
-    async function addFiles(files) {
-        const selected = Array.from(files);
-        if (selected.length === 0)
-            return;
-        setStatus("loadingImages");
-        for (const file of selected) {
-            if (!isSupportedImage(file)) {
-                alert(t("unsupportedImage") + file.name);
-                continue;
-            }
-            const url = URL.createObjectURL(file);
-            try {
-                const size = await loadImageDimensions(file, url);
-                images.push({
-                    id: String(Date.now()) + "-" + Math.random().toString(16).slice(2),
-                    file,
-                    url,
-                    width: size.width,
-                    height: size.height
-                });
-            }
-            catch (_error) {
-                URL.revokeObjectURL(url);
-                alert(t("unsupportedImage") + file.name);
-            }
-        }
-        renderImages();
-        $("#statusLine").textContent = images.length ? images.length + " " + t("readyImages") : t("waitingInput");
-    }
-    function moveImage(index, offset) {
-        const target = index + offset;
-        if (target < 0 || target >= images.length)
-            return;
-        const [entry] = images.splice(index, 1);
-        images.splice(target, 0, entry);
-        renderImages();
-    }
-    function removeImage(index) {
-        const [entry] = images.splice(index, 1);
-        if (entry)
-            URL.revokeObjectURL(entry.url);
-        renderImages();
-        if (!images.length)
-            setStatus("waitingInput");
-    }
-    function getImageIndexFromItem(item) {
-        const value = item && item.dataset ? Number(item.dataset.index) : NaN;
-        return Number.isFinite(value) ? value : -1;
-    }
-    function updateImageDragIndexes() {
-        $$("#imageList .image-item").forEach((item, index) => {
-            item.dataset.index = String(index);
-        });
-    }
-    function finishImageDrag() {
-        draggedId = "";
-        $("#imageList").classList.remove("drag-sorting");
-        $$("#imageList .image-item").forEach((item) => {
-            item.classList.remove("dragging", "drag-over");
-        });
-    }
-    function renderImages() {
-        const list = $("#imageList");
-        list.innerHTML = "";
-        images.forEach((entry, index) => {
-            const item = document.createElement("article");
-            item.className = "image-item";
-            item.draggable = true;
-            item.dataset.id = entry.id;
-            item.dataset.index = String(index);
-            item.innerHTML = [
-                '<img class="thumb" src="' + entry.url + '" alt="">',
-                "<div>",
-                '<div class="file-name">' + entry.file.name + "</div>",
-                '<div class="file-meta">' + entry.width + " x " + entry.height + " · " + formatBytes(entry.file.size) + "</div>",
-                "</div>",
-                '<div class="item-actions">',
-                '<button class="icon-btn" type="button" data-action="up" aria-label="' + t("moveUp") + '">↑</button>',
-                '<button class="icon-btn" type="button" data-action="down" aria-label="' + t("moveDown") + '">↓</button>',
-                '<button class="icon-btn" type="button" data-action="remove" aria-label="' + t("remove") + '">×</button>',
-                "</div>"
-            ].join("");
-            item.addEventListener("dragstart", (event) => {
-                draggedId = entry.id;
-                $("#imageList").classList.add("drag-sorting");
-                item.classList.add("dragging");
-                if (event.dataTransfer) {
-                    event.dataTransfer.effectAllowed = "move";
-                    event.dataTransfer.setData("text/plain", entry.id);
-                }
-            });
-            item.addEventListener("dragend", () => {
-                finishImageDrag();
-                renderImages();
-            });
-            item.addEventListener("dragover", (event) => {
-                event.preventDefault();
-                if (!draggedId || draggedId === entry.id)
-                    return;
-                const from = images.findIndex((image) => image.id === draggedId);
-                const to = getImageIndexFromItem(item);
-                if (from < 0 || to < 0 || from === to)
-                    return;
-                item.classList.add("drag-over");
-                const [moved] = images.splice(from, 1);
-                images.splice(to, 0, moved);
-                const draggedItem = $("#imageList .image-item.dragging");
-                if (draggedItem) {
-                    if (from < to)
-                        item.after(draggedItem);
-                    else
-                        item.before(draggedItem);
-                    updateImageDragIndexes();
-                }
-            });
-            item.addEventListener("dragleave", () => {
-                item.classList.remove("drag-over");
-            });
-            item.addEventListener("drop", (event) => {
-                event.preventDefault();
-                finishImageDrag();
-                renderImages();
-            });
-            item.querySelectorAll("[data-action]").forEach((button) => {
-                button.addEventListener("click", () => {
-                    const action = button.dataset.action;
-                    if (action === "up")
-                        moveImage(index, -1);
-                    if (action === "down")
-                        moveImage(index, 1);
-                    if (action === "remove")
-                        removeImage(index);
-                });
-            });
-            list.appendChild(item);
-        });
-        updateImageDragIndexes();
-    }
-    function openResourceCacheDb() {
+    function openResourceDb() {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(RESOURCE_CACHE_DB_NAME, RESOURCE_CACHE_DB_VERSION);
             request.onupgradeneeded = () => {
                 const db = request.result;
-                if (!db.objectStoreNames.contains(RESOURCE_CACHE_STORE_NAME)) {
-                    db.createObjectStore(RESOURCE_CACHE_STORE_NAME, { keyPath: "id" });
-                }
+                if (!db.objectStoreNames.contains(RESOURCE_CACHE_STORE_NAME))
+                    db.createObjectStore(RESOURCE_CACHE_STORE_NAME);
             };
             request.onsuccess = () => resolve(request.result);
             request.onerror = () => reject(request.error);
         });
     }
-    function getCachedResource(resourceId) {
-        return openResourceCacheDb().then((db) => new Promise((resolve, reject) => {
-            const transaction = db.transaction(RESOURCE_CACHE_STORE_NAME, "readonly");
-            const request = transaction.objectStore(RESOURCE_CACHE_STORE_NAME).get(resourceId);
-            request.onsuccess = () => resolve(request.result || null);
-            request.onerror = () => reject(request.error);
-            transaction.oncomplete = () => db.close();
-            transaction.onerror = () => {
-                db.close();
-                reject(transaction.error);
-            };
-        }));
+    function cachedResourceToBlob(record) {
+        if (!record)
+            return null;
+        if (record instanceof Blob)
+            return record;
+        const content = record.content;
+        if (!content)
+            return null;
+        const mimeType = record.mimeType || "application/javascript";
+        if (content instanceof Blob)
+            return content;
+        if (content instanceof ArrayBuffer)
+            return new Blob([content], { type: mimeType });
+        if (ArrayBuffer.isView(content)) {
+            const view = content;
+            const source = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+            const buffer = new ArrayBuffer(source.byteLength);
+            new Uint8Array(buffer).set(source);
+            return new Blob([buffer], { type: mimeType });
+        }
+        return null;
     }
-    function loadScript(src) {
+    async function readCachedResource(id) {
+        const db = await openResourceDb();
         return new Promise((resolve, reject) => {
-            if (window.PDFLib) {
-                resolve();
-                return;
-            }
-            const existing = document.querySelector('script[data-pdf-lib="true"]');
-            if (existing) {
-                existing.addEventListener("load", () => resolve(), { once: true });
-                existing.addEventListener("error", () => reject(new Error(t("engineMissing"))), { once: true });
-                return;
-            }
-            const script = document.createElement("script");
-            script.src = src;
-            script.dataset.pdfLib = "true";
-            script.onload = () => resolve();
-            script.onerror = () => reject(new Error(t("engineMissing")));
-            document.head.appendChild(script);
+            const tx = db.transaction(RESOURCE_CACHE_STORE_NAME, "readonly");
+            const request = tx.objectStore(RESOURCE_CACHE_STORE_NAME).get(id);
+            request.onsuccess = () => resolve(cachedResourceToBlob(request.result));
+            request.onerror = () => reject(request.error);
+            tx.oncomplete = () => db.close();
+            tx.onerror = () => db.close();
         });
     }
-    async function loadCachedPdfLib() {
-        if (window.PDFLib) {
+    async function getPdfLib() {
+        const existing = window.PDFLib;
+        if (existing) {
             pdfLibReady = true;
             updateEngineStatus();
-            return window.PDFLib;
+            return existing;
         }
-        if (!pdfLibPromise) {
-            pdfLibPromise = (async () => {
-                updateEngineStatus();
-                const record = await getCachedResource(PDF_LIB_RESOURCE_ID);
-                if (!record || !record.content)
-                    throw new Error(t("engineMissing"));
-                const blob = new Blob([record.content], { type: record.mimeType || "text/javascript" });
-                const blobUrl = URL.createObjectURL(blob);
-                try {
-                    await loadScript(blobUrl);
-                }
-                finally {
-                    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-                }
-                if (!window.PDFLib)
-                    throw new Error(t("engineMissing"));
-                pdfLibReady = true;
-                updateEngineStatus();
-                appendLog(t("engineReady"));
-                return window.PDFLib;
-            })().catch((error) => {
-                pdfLibPromise = null;
-                updateEngineStatus();
-                throw error;
+        if (pdfLibPromise)
+            return pdfLibPromise;
+        pdfLibPromise = (async () => {
+            updateEngineStatus();
+            const blob = await readCachedResource(PDF_LIB_RESOURCE_ID);
+            if (!blob)
+                throw new Error(t("engineMissing"));
+            const url = URL.createObjectURL(blob);
+            await new Promise((resolve, reject) => {
+                const script = document.createElement("script");
+                script.src = url;
+                script.onload = () => resolve();
+                script.onerror = () => reject(new Error(t("engineMissing")));
+                document.head.appendChild(script);
             });
-        }
+            URL.revokeObjectURL(url);
+            const lib = window.PDFLib;
+            if (!lib)
+                throw new Error(t("engineMissing"));
+            pdfLibReady = true;
+            updateEngineStatus();
+            return lib;
+        })().catch((error) => {
+            pdfLibPromise = null;
+            updateEngineStatus();
+            throw error;
+        });
         return pdfLibPromise;
     }
-    function getPageSize(entry, margin) {
-        const mode = $("#pageSize").value;
-        if (mode === "a4-portrait")
-            return A4_PORTRAIT.slice();
-        if (mode === "a4-landscape")
-            return A4_LANDSCAPE.slice();
-        return [entry.width + margin * 2, entry.height + margin * 2];
-    }
-    function getDrawBox(pageWidth, pageHeight, imageWidth, imageHeight, margin, fit) {
-        const contentWidth = Math.max(1, pageWidth - margin * 2);
-        const contentHeight = Math.max(1, pageHeight - margin * 2);
-        const scale = fit === "cover"
-            ? Math.max(contentWidth / imageWidth, contentHeight / imageHeight)
-            : Math.min(contentWidth / imageWidth, contentHeight / imageHeight);
-        const width = imageWidth * scale;
-        const height = imageHeight * scale;
+    async function loadPdfEntry(file) {
+        const lib = await getPdfLib();
+        const bytes = await fileBytes(file);
+        const doc = await lib.PDFDocument.load(bytes, { ignoreEncryption: true });
         return {
-            x: margin + (contentWidth - width) / 2,
-            y: margin + (contentHeight - height) / 2,
-            width,
-            height
+            id: String(Date.now()) + "-" + Math.random().toString(16).slice(2),
+            file,
+            bytes,
+            url: URL.createObjectURL(file),
+            pageCount: doc.getPageCount()
         };
     }
-    async function generatePdf() {
-        if (generating)
-            return;
-        if (!images.length) {
-            alert(t("needImages"));
+    async function addImages(files) {
+        setStatus("loadingFiles");
+        for (const file of Array.from(files)) {
+            if (!isSupportedImage(file)) {
+                alert(t("unsupportedImage") + file.name);
+                continue;
+            }
+            const url = URL.createObjectURL(file);
+            const size = await loadImageDimensions(file, url);
+            images.push({ id: String(Date.now()) + "-" + Math.random().toString(16).slice(2), file, url, width: size.width, height: size.height });
+        }
+        renderImages();
+        setStatus("ready");
+    }
+    async function addMergePdfs(files) {
+        setStatus("loadingFiles");
+        for (const file of Array.from(files)) {
+            if (!isPdf(file)) {
+                alert(t("unsupportedPdf") + file.name);
+                continue;
+            }
+            mergePdfs.push(await loadPdfEntry(file));
+        }
+        renderMergePdfs();
+        setStatus("ready");
+    }
+    async function addManagedPdfs(files) {
+        setStatus("loadingFiles");
+        for (const file of Array.from(files)) {
+            if (!isPdf(file)) {
+                alert(t("unsupportedPdf") + file.name);
+                continue;
+            }
+            const entry = await loadPdfEntry(file);
+            managedPdfs.set(entry.id, entry);
+            for (let index = 0; index < entry.pageCount; index++) {
+                managedPages.push({
+                    id: entry.id + "-" + index + "-" + Math.random().toString(16).slice(2),
+                    sourceId: entry.id,
+                    sourceName: entry.file.name,
+                    pageIndex: index,
+                    pageCount: entry.pageCount,
+                    rotation: 0
+                });
+            }
+        }
+        renderManagedPages();
+        setStatus("ready");
+    }
+    async function setSinglePdf(file, target) {
+        if (!isPdf(file)) {
+            alert(t("unsupportedPdf") + file.name);
             return;
         }
-        generating = true;
-        $("#generateButton").disabled = true;
-        $("#summary").innerHTML = "";
-        $("#resultBox").dataset.hasOutput = "";
-        $("#resultBox").textContent = t("noOutput");
-        setStatus("generating");
-        try {
-            const PDFLib = await loadCachedPdfLib();
-            const pdfDoc = await PDFLib.PDFDocument.create();
-            const fit = $("#fitMode").value;
-            const margin = Math.max(0, Math.min(240, Number($("#marginInput").value) || 0));
-            for (const entry of images) {
-                const bytes = await entry.file.arrayBuffer();
-                const lowerName = entry.file.name.toLowerCase();
-                const embedded = lowerName.endsWith(".png") || entry.file.type === "image/png"
-                    ? await pdfDoc.embedPng(bytes)
-                    : await pdfDoc.embedJpg(bytes);
-                const [pageWidth, pageHeight] = getPageSize(entry, margin);
-                const page = pdfDoc.addPage([pageWidth, pageHeight]);
-                const box = getDrawBox(pageWidth, pageHeight, embedded.width, embedded.height, margin, fit);
-                page.drawImage(embedded, box);
+        setStatus("loadingFiles");
+        const entry = await loadPdfEntry(file);
+        if (target === "watermark") {
+            watermarkPdf = entry;
+            renderSinglePdf("#watermarkPdfList", entry);
+        }
+        else {
+            metadataPdf = entry;
+            renderMetadata(entry);
+        }
+        setStatus("ready");
+    }
+    function fileItem(entry, extra, onRemove) {
+        const item = document.createElement("div");
+        item.className = "file-item";
+        const content = document.createElement("div");
+        content.innerHTML = '<div class="file-name"></div><div class="muted"></div>';
+        content.querySelector(".file-name").textContent = entry.file.name;
+        content.querySelector(".muted").textContent = extra;
+        item.appendChild(content);
+        if (onRemove) {
+            const button = document.createElement("button");
+            button.className = "icon-btn";
+            button.type = "button";
+            button.textContent = "×";
+            button.setAttribute("aria-label", t("remove"));
+            button.addEventListener("click", onRemove);
+            item.appendChild(button);
+        }
+        return item;
+    }
+    function renderImages() {
+        const list = $("#imageList");
+        list.innerHTML = "";
+        images.forEach((image) => {
+            const item = fileItem(image, image.width + " × " + image.height + " · " + formatBytes(image.file.size), () => {
+                URL.revokeObjectURL(image.url);
+                images = images.filter((entry) => entry.id !== image.id);
+                renderImages();
+            });
+            item.draggable = true;
+            item.addEventListener("dragstart", () => { draggedImageId = image.id; });
+            item.addEventListener("dragover", (event) => event.preventDefault());
+            item.addEventListener("drop", (event) => {
+                event.preventDefault();
+                const from = images.findIndex((entry) => entry.id === draggedImageId);
+                const to = images.findIndex((entry) => entry.id === image.id);
+                if (from >= 0 && to >= 0 && from !== to) {
+                    const [moved] = images.splice(from, 1);
+                    images.splice(to, 0, moved);
+                    renderImages();
+                }
+            });
+            list.appendChild(item);
+        });
+    }
+    function renderMergePdfs() {
+        const list = $("#mergePdfList");
+        list.innerHTML = "";
+        mergePdfs.forEach((entry) => {
+            list.appendChild(fileItem(entry, entry.pageCount + " " + t("pages") + " · " + formatBytes(entry.file.size), () => {
+                mergePdfs = mergePdfs.filter((item) => item.id !== entry.id);
+                renderMergePdfs();
+            }));
+        });
+    }
+    function renderSinglePdf(selector, entry) {
+        const list = $(selector);
+        list.innerHTML = "";
+        if (entry)
+            list.appendChild(fileItem(entry, entry.pageCount + " " + t("pages") + " · " + formatBytes(entry.file.size)));
+    }
+    async function getPagePreviewUrl(page) {
+        const key = page.id + ":" + page.rotation;
+        const cached = pagePreviewCache.get(key);
+        if (cached)
+            return cached;
+        const lib = await getPdfLib();
+        const entry = managedPdfs.get(page.sourceId);
+        if (!entry)
+            return "";
+        const source = await lib.PDFDocument.load(entry.bytes, { ignoreEncryption: true });
+        const preview = await lib.PDFDocument.create();
+        const [copied] = await preview.copyPages(source, [page.pageIndex]);
+        const existing = copied.getRotation ? copied.getRotation().angle : 0;
+        copied.setRotation(lib.degrees((existing + page.rotation) % 360));
+        preview.addPage(copied);
+        const bytes = await preview.save();
+        const blob = new Blob([bytes], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        pagePreviewCache.set(key, url);
+        return url;
+    }
+    function updatePagePreview(card, page, visibleIndex) {
+        const thumb = card.querySelector(".thumb");
+        const key = page.id + ":" + page.rotation;
+        const fallback = card.querySelector(".thumb-fallback");
+        if (fallback)
+            fallback.textContent = String(visibleIndex + 1);
+        if (thumb.dataset.previewKey === key)
+            return;
+        thumb.dataset.previewKey = key;
+        thumb.querySelectorAll("embed").forEach((node) => node.remove());
+        void getPagePreviewUrl(page).then((url) => {
+            if (!url || thumb.dataset.previewKey !== key)
+                return;
+            const embed = document.createElement("embed");
+            embed.type = "application/pdf";
+            embed.src = url + "#toolbar=0&navpanes=0&scrollbar=0&view=Fit";
+            thumb.insertBefore(embed, thumb.firstChild);
+        });
+    }
+    function openPagePreview(page) {
+        void getPagePreviewUrl(page).then((url) => {
+            if (!url)
+                return;
+            activePreviewUrl = url;
+            const modal = $("#pagePreviewModal");
+            const embed = $("#pagePreviewEmbed");
+            const title = $("#pagePreviewTitle");
+            title.textContent = page.sourceName + " · p." + (page.pageIndex + 1) + "/" + page.pageCount;
+            embed.src = url + "#toolbar=0&navpanes=0&scrollbar=0&view=Fit";
+            modal.hidden = false;
+        });
+    }
+    function closePagePreview() {
+        const modal = $("#pagePreviewModal");
+        const embed = $("#pagePreviewEmbed");
+        embed.removeAttribute("src");
+        activePreviewUrl = "";
+        modal.hidden = true;
+    }
+    function createPageCard(page) {
+        const card = document.createElement("div");
+        card.className = "page-card";
+        card.draggable = true;
+        card.dataset.pageId = page.id;
+        card.innerHTML =
+            '<button class="thumb" type="button"></button><div class="file-name"></div><div class="muted"></div><div class="page-actions"></div>';
+        const thumb = card.querySelector(".thumb");
+        const fallback = document.createElement("span");
+        fallback.className = "thumb-fallback";
+        thumb.appendChild(fallback);
+        thumb.addEventListener("click", () => openPagePreview(page));
+        const actions = card.querySelector(".page-actions");
+        const rotate = document.createElement("button");
+        rotate.className = "btn";
+        rotate.type = "button";
+        rotate.textContent = t("rotate");
+        rotate.addEventListener("click", () => {
+            page.rotation = (page.rotation + 90) % 360;
+            updatePageCard(card, page, managedPages.findIndex((entry) => entry.id === page.id));
+        });
+        const remove = document.createElement("button");
+        remove.className = "btn";
+        remove.type = "button";
+        remove.textContent = t("remove");
+        remove.addEventListener("click", () => {
+            managedPages = managedPages.filter((entry) => entry.id !== page.id);
+            card.remove();
+            renderManagedPages();
+        });
+        actions.append(rotate, remove);
+        card.addEventListener("dragstart", () => { draggedPageId = page.id; });
+        card.addEventListener("dragover", (event) => {
+            event.preventDefault();
+            card.classList.add("drag-over");
+        });
+        card.addEventListener("dragleave", () => card.classList.remove("drag-over"));
+        card.addEventListener("drop", (event) => {
+            event.preventDefault();
+            card.classList.remove("drag-over");
+            const from = managedPages.findIndex((entry) => entry.id === draggedPageId);
+            const to = managedPages.findIndex((entry) => entry.id === page.id);
+            if (from >= 0 && to >= 0 && from !== to) {
+                const [moved] = managedPages.splice(from, 1);
+                managedPages.splice(to, 0, moved);
+                renderManagedPages();
             }
-            const output = await pdfDoc.save();
-            const fileName = normalizePdfName($("#outputName").value);
-            const blob = new Blob([output], { type: "application/pdf" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.className = "download-link";
-            link.href = url;
-            link.download = fileName;
-            link.textContent = t("download");
-            $("#resultBox").innerHTML = "";
-            $("#resultBox").dataset.hasOutput = "true";
-            $("#resultBox").appendChild(link);
-            $("#summary").innerHTML = [
-                "<div><span>" + t("pages") + "</span><strong>" + images.length + "</strong></div>",
-                "<div><span>" + t("size") + "</span><strong>" + formatBytes(blob.size) + "</strong></div>",
-                "<div><span>" + t("fileName") + "</span><strong>" + fileName + "</strong></div>"
-            ].join("");
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
-            setStatus("done");
-            appendLog(t("done") + ": " + fileName);
+        });
+        return card;
+    }
+    function updatePageCard(card, page, visibleIndex) {
+        card.querySelector(".file-name").textContent = page.sourceName;
+        card.querySelector(".muted").textContent = "p." + (page.pageIndex + 1) + "/" + page.pageCount + " · " + page.rotation + "°";
+        updatePagePreview(card, page, visibleIndex);
+    }
+    function renderManagedPages() {
+        const grid = $("#pageGrid");
+        const existingCards = new Map();
+        Array.from(grid.querySelectorAll(".page-card")).forEach((card) => {
+            if (card.dataset.pageId)
+                existingCards.set(card.dataset.pageId, card);
+        });
+        managedPages.forEach((page, visibleIndex) => {
+            const card = existingCards.get(page.id) || createPageCard(page);
+            updatePageCard(card, page, visibleIndex);
+            grid.appendChild(card);
+            existingCards.delete(page.id);
+        });
+        existingCards.forEach((card) => card.remove());
+    }
+    async function renderMetadata(entry) {
+        const lib = await getPdfLib();
+        const doc = await lib.PDFDocument.load(entry.bytes, { ignoreEncryption: true });
+        const rows = [
+            ["titleMeta", doc.getTitle && doc.getTitle()],
+            ["authorMeta", doc.getAuthor && doc.getAuthor()],
+            ["subjectMeta", doc.getSubject && doc.getSubject()],
+            ["keywordsMeta", doc.getKeywords && (doc.getKeywords() || []).join(", ")],
+            ["creatorMeta", doc.getCreator && doc.getCreator()],
+            ["producerMeta", doc.getProducer && doc.getProducer()],
+            ["creationDateMeta", doc.getCreationDate && String(doc.getCreationDate() || "")],
+            ["modificationDateMeta", doc.getModificationDate && String(doc.getModificationDate() || "")]
+        ];
+        const list = $("#metadataList");
+        list.innerHTML = "";
+        renderSinglePdf("#metadataList", entry);
+        const details = document.createElement("div");
+        details.className = "metadata-grid";
+        rows.forEach((row) => {
+            const value = row[1] || "";
+            const item = document.createElement("div");
+            item.className = "metadata-row";
+            item.innerHTML = '<strong></strong><div class="muted"></div>';
+            item.querySelector("strong").textContent = t(row[0]);
+            item.querySelector(".muted").textContent = value || t("metadataEmpty");
+            details.appendChild(item);
+        });
+        list.appendChild(details);
+    }
+    function renderAll() {
+        renderImages();
+        renderMergePdfs();
+        renderManagedPages();
+        renderSinglePdf("#watermarkPdfList", watermarkPdf);
+        if (metadataPdf)
+            void renderMetadata(metadataPdf);
+    }
+    function pageSizeForImage(image, mode) {
+        if (mode === "a4-portrait")
+            return A4_PORTRAIT;
+        if (mode === "a4-landscape")
+            return A4_LANDSCAPE;
+        return [image.width, image.height];
+    }
+    function drawRectForFit(pageWidth, pageHeight, mediaWidth, mediaHeight, margin, fit) {
+        const availableWidth = Math.max(1, pageWidth - margin * 2);
+        const availableHeight = Math.max(1, pageHeight - margin * 2);
+        const scale = fit === "cover"
+            ? Math.max(availableWidth / mediaWidth, availableHeight / mediaHeight)
+            : Math.min(availableWidth / mediaWidth, availableHeight / mediaHeight);
+        const width = mediaWidth * scale;
+        const height = mediaHeight * scale;
+        return { x: (pageWidth - width) / 2, y: (pageHeight - height) / 2, width, height };
+    }
+    async function generateImagesPdf() {
+        if (!images.length)
+            throw new Error(t("needImages"));
+        const lib = await getPdfLib();
+        const doc = await lib.PDFDocument.create();
+        const margin = Math.max(0, Number($("#marginInput").value) || 0);
+        const pageSize = $("#pageSize").value;
+        const fit = $("#fitMode").value;
+        for (const image of images) {
+            const bytes = await fileBytes(image.file);
+            const lowerName = image.file.name.toLowerCase();
+            const embedded = lowerName.endsWith(".png") || image.file.type === "image/png"
+                ? await doc.embedPng(bytes)
+                : await doc.embedJpg(bytes);
+            const size = pageSizeForImage(image, pageSize);
+            const page = doc.addPage(size);
+            const rect = drawRectForFit(size[0], size[1], embedded.width, embedded.height, margin, fit);
+            page.drawImage(embedded, rect);
+        }
+        await downloadDoc(doc, $("#imageOutputName").value);
+    }
+    async function mergePdfsAction() {
+        if (!mergePdfs.length)
+            throw new Error(t("needPdfs"));
+        const lib = await getPdfLib();
+        const output = await lib.PDFDocument.create();
+        for (const entry of mergePdfs) {
+            const source = await lib.PDFDocument.load(entry.bytes, { ignoreEncryption: true });
+            const pages = await output.copyPages(source, source.getPageIndices());
+            pages.forEach((page) => output.addPage(page));
+        }
+        await downloadDoc(output, $("#mergeOutputName").value);
+    }
+    function parseRanges(text, max) {
+        const indices = new Set();
+        (text || "").split(",").forEach((part) => {
+            const trimmed = part.trim();
+            if (!trimmed)
+                return;
+            const match = /^(\d+)(?:-(\d+))?$/.exec(trimmed);
+            if (!match)
+                return;
+            const start = Math.max(1, Number(match[1]));
+            const end = Math.min(max, Number(match[2] || match[1]));
+            for (let page = Math.min(start, end); page <= Math.max(start, end); page++)
+                indices.add(page - 1);
+        });
+        return Array.from(indices).filter((index) => index >= 0 && index < max).sort((a, b) => a - b);
+    }
+    async function splitPdfAction() {
+        if (!mergePdfs.length)
+            throw new Error(t("needOnePdf"));
+        const lib = await getPdfLib();
+        const source = await lib.PDFDocument.load(mergePdfs[0].bytes, { ignoreEncryption: true });
+        const ranges = parseRanges($("#splitRangeInput").value, source.getPageCount());
+        if (!ranges.length)
+            throw new Error(t("range"));
+        const output = await lib.PDFDocument.create();
+        const pages = await output.copyPages(source, ranges);
+        pages.forEach((page) => output.addPage(page));
+        await downloadDoc(output, $("#mergeOutputName").value || "split.pdf");
+    }
+    async function exportManagedPages() {
+        if (!managedPages.length)
+            throw new Error(t("needPdfs"));
+        const lib = await getPdfLib();
+        const output = await lib.PDFDocument.create();
+        const docCache = new Map();
+        for (const page of managedPages) {
+            let source = docCache.get(page.sourceId);
+            if (!source) {
+                const entry = managedPdfs.get(page.sourceId);
+                if (!entry)
+                    continue;
+                source = await lib.PDFDocument.load(entry.bytes, { ignoreEncryption: true });
+                docCache.set(page.sourceId, source);
+            }
+            const [copied] = await output.copyPages(source, [page.pageIndex]);
+            const existing = copied.getRotation ? copied.getRotation().angle : 0;
+            copied.setRotation(lib.degrees((existing + page.rotation) % 360));
+            output.addPage(copied);
+        }
+        await downloadDoc(output, $("#pagesOutputName").value);
+    }
+    async function applyWatermark() {
+        if (!watermarkPdf)
+            throw new Error(t("needOnePdf"));
+        const lib = await getPdfLib();
+        const doc = await lib.PDFDocument.load(watermarkPdf.bytes, { ignoreEncryption: true });
+        const font = await doc.embedFont(lib.StandardFonts.Helvetica);
+        const text = ($("#watermarkText").value || "").trim();
+        const header = ($("#headerText").value || "").trim();
+        const footer = ($("#footerText").value || "").trim();
+        const opacity = Math.max(0.05, Math.min(1, Number($("#watermarkOpacity").value) || 0.18));
+        const pageNumberMode = $("#pageNumberMode").value;
+        let imageWatermark = null;
+        const imageFile = $("#watermarkImageInput").files && $("#watermarkImageInput").files[0];
+        if (imageFile && isSupportedImage(imageFile)) {
+            const bytes = await fileBytes(imageFile);
+            imageWatermark = imageFile.type === "image/png" || imageFile.name.toLowerCase().endsWith(".png")
+                ? await doc.embedPng(bytes)
+                : await doc.embedJpg(bytes);
+        }
+        const pages = doc.getPages();
+        pages.forEach((page, index) => {
+            const size = page.getSize();
+            if (text) {
+                page.drawText(text, {
+                    x: size.width * 0.18,
+                    y: size.height * 0.48,
+                    size: Math.max(28, Math.min(size.width, size.height) * 0.08),
+                    font,
+                    color: lib.rgb(0.5, 0.5, 0.5),
+                    opacity,
+                    rotate: lib.degrees(-35)
+                });
+            }
+            if (imageWatermark) {
+                const width = size.width * 0.32;
+                const height = width * (imageWatermark.height / imageWatermark.width);
+                page.drawImage(imageWatermark, { x: (size.width - width) / 2, y: (size.height - height) / 2, width, height, opacity });
+            }
+            if (header)
+                page.drawText(header, { x: 36, y: size.height - 28, size: 10, font, color: lib.rgb(0.25, 0.25, 0.25) });
+            if (footer)
+                page.drawText(footer, { x: 36, y: 18, size: 10, font, color: lib.rgb(0.25, 0.25, 0.25) });
+            if (pageNumberMode !== "none") {
+                const label = String(index + 1) + " / " + pages.length;
+                const x = pageNumberMode === "bottom-right" ? size.width - 72 : (size.width - font.widthOfTextAtSize(label, 10)) / 2;
+                page.drawText(label, { x, y: 18, size: 10, font, color: lib.rgb(0.25, 0.25, 0.25) });
+            }
+        });
+        await downloadDoc(doc, $("#watermarkOutputName").value);
+    }
+    async function clearMetadata() {
+        if (!metadataPdf)
+            throw new Error(t("needOnePdf"));
+        const lib = await getPdfLib();
+        const doc = await lib.PDFDocument.load(metadataPdf.bytes, { ignoreEncryption: true });
+        if (doc.setTitle)
+            doc.setTitle("");
+        if (doc.setAuthor)
+            doc.setAuthor("");
+        if (doc.setSubject)
+            doc.setSubject("");
+        if (doc.setKeywords)
+            doc.setKeywords([]);
+        if (doc.setCreator)
+            doc.setCreator("");
+        if (doc.setProducer)
+            doc.setProducer("");
+        const now = new Date(0);
+        if (doc.setCreationDate)
+            doc.setCreationDate(now);
+        if (doc.setModificationDate)
+            doc.setModificationDate(now);
+        await downloadDoc(doc, $("#metadataOutputName").value);
+    }
+    async function downloadDoc(doc, name) {
+        const bytes = await doc.save();
+        const blob = new Blob([bytes], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = normalizePdfName(name);
+        link.textContent = t("download") + " · " + formatBytes(blob.size);
+        $("#resultBox").dataset.hasOutput = "true";
+        $("#resultBox").innerHTML = "";
+        $("#resultBox").appendChild(link);
+        setStatus("done");
+    }
+    async function run(action) {
+        try {
+            setStatus("loadingFiles");
+            await action();
         }
         catch (error) {
             setStatus("failed");
-            const message = (error && error.message) || String(error);
-            $("#resultBox").textContent = message;
-            appendLog(message);
-        }
-        finally {
-            generating = false;
-            $("#generateButton").disabled = false;
+            alert(error instanceof Error ? error.message : String(error));
         }
     }
-    $("#uploadLabel").addEventListener("dragover", (event) => {
-        event.preventDefault();
-        $("#uploadLabel").classList.add("dragover");
+    function setTool(tool) {
+        currentTool = tool;
+        $$(".tabs button").forEach((button) => button.classList.toggle("active", button.dataset.tool === tool));
+        $$(".tool-panel").forEach((panel) => {
+            const id = panel.id || "";
+            panel.classList.toggle("active", id === "panel-" + tool || id === "settings-" + tool);
+        });
+    }
+    function wireDrop(label, input, handler) {
+        label.addEventListener("dragover", (event) => {
+            event.preventDefault();
+            label.classList.add("dragover");
+        });
+        label.addEventListener("dragleave", () => label.classList.remove("dragover"));
+        label.addEventListener("drop", (event) => {
+            event.preventDefault();
+            label.classList.remove("dragover");
+            if (event.dataTransfer?.files)
+                void handler(event.dataTransfer.files);
+        });
+        input.addEventListener("change", () => {
+            if (input.files)
+                void handler(input.files);
+            input.value = "";
+        });
+    }
+    wireDrop($("#imageUpload"), $("#imageInput"), addImages);
+    wireDrop($("#pdfUploadMerge"), $("#mergePdfInput"), addMergePdfs);
+    wireDrop($("#pdfUploadPages"), $("#pagesPdfInput"), addManagedPdfs);
+    wireDrop($("#pdfUploadWatermark"), $("#watermarkPdfInput"), (files) => {
+        const file = Array.from(files)[0];
+        if (file)
+            void setSinglePdf(file, "watermark");
     });
-    $("#uploadLabel").addEventListener("dragleave", () => {
-        $("#uploadLabel").classList.remove("dragover");
+    wireDrop($("#pdfUploadMetadata"), $("#metadataPdfInput"), (files) => {
+        const file = Array.from(files)[0];
+        if (file)
+            void setSinglePdf(file, "metadata");
     });
-    $("#uploadLabel").addEventListener("drop", (event) => {
-        event.preventDefault();
-        $("#uploadLabel").classList.remove("dragover");
-        void addFiles(event.dataTransfer.files);
+    $("#loadPdfLibButton").addEventListener("click", () => run(async () => { await getPdfLib(); setStatus("ready"); }));
+    $("#generateImagesButton").addEventListener("click", () => run(generateImagesPdf));
+    $("#mergeButton").addEventListener("click", () => run(mergePdfsAction));
+    $("#splitButton").addEventListener("click", () => run(splitPdfAction));
+    $("#exportPagesButton").addEventListener("click", () => run(exportManagedPages));
+    $("#applyWatermarkButton").addEventListener("click", () => run(applyWatermark));
+    $("#clearMetadataButton").addEventListener("click", () => run(clearMetadata));
+    $("#pagePreviewClose").addEventListener("click", closePagePreview);
+    $("#pagePreviewModal").addEventListener("click", (event) => {
+        if (event.target === $("#pagePreviewModal"))
+            closePagePreview();
     });
-    $("#fileInput").addEventListener("change", (event) => {
-        void addFiles(event.target.files);
-        event.target.value = "";
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !$("#pagePreviewModal").hidden)
+            closePagePreview();
     });
-    $("#loadPdfLibButton").addEventListener("click", async () => {
-        try {
-            await loadCachedPdfLib();
-        }
-        catch (error) {
-            alert((error && error.message) || String(error));
-        }
+    $$(".tabs button").forEach((button) => {
+        button.addEventListener("click", () => setTool(button.dataset.tool));
     });
-    $("#generateButton").addEventListener("click", generatePdf);
-    document.querySelectorAll(".language button[data-lang]").forEach((button) => {
+    $$(".language button[data-lang]").forEach((button) => {
         button.addEventListener("click", () => {
-            const nextLanguage = button.dataset.lang;
-            if (nextLanguage !== "zh" && nextLanguage !== "en")
+            const next = button.dataset.lang;
+            if (next !== "zh" && next !== "en")
                 return;
-            localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
-            applyLanguage(nextLanguage);
+            localStorage.setItem(LANGUAGE_STORAGE_KEY, next);
+            applyLanguage(next);
         });
     });
     $("#themeButton").addEventListener("click", () => {
@@ -569,4 +1000,5 @@
     });
     applyTheme(resolveInitialTheme());
     applyLanguage(currentLanguage);
+    setTool("images");
 })();
