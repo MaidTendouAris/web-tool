@@ -56,4 +56,7 @@ https://maidtendouaris.github.io/web-tools/
 
 ## 许可证
 
-MIT。见 [LICENSE](./LICENSE)。
+本仓库自有源码使用 MIT 许可证。见 [LICENSE](./LICENSE)。
+
+通过资源管理加载的可选运行时文件，包括 FFmpeg.wasm 和 pdf-lib 资源，仍遵循其各自许可证。见
+[THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。

@@ -32,6 +32,8 @@
             downloadPng: "下载 PNG",
             download: "下载",
             imageList: "图片列表",
+            openPreview: "查看完整图片",
+            closePreview: "关闭预览",
             clear: "清空",
             stitchSettings: "拼接设置",
             direction: "布局",
@@ -95,6 +97,8 @@
             downloadPng: "Download PNG",
             download: "Download",
             imageList: "Image List",
+            openPreview: "Open full image",
+            closePreview: "Close preview",
             clear: "Clear",
             stitchSettings: "Stitch Settings",
             direction: "Layout",
@@ -193,6 +197,8 @@
         $(".topbar").setAttribute("aria-label", t("navLabel"));
         $("#themeButton").setAttribute("title", t("themeToggle"));
         $("#themeButton").setAttribute("aria-label", t("themeToggle"));
+        $("#imagePreviewClose").setAttribute("aria-label", t("closePreview"));
+        $("#imagePreviewClose").setAttribute("title", t("closePreview"));
         document.querySelectorAll(".language button[data-lang]").forEach(function (button) {
             button.classList.toggle("active", button.dataset.lang === language);
         });
@@ -340,12 +346,40 @@
             callback(Array.from(event.dataTransfer.files || []));
         });
     }
+    function openImagePreview(source) {
+        if (!source)
+            return;
+        $("#imagePreviewFull").src = source;
+        $("#imagePreviewModal").classList.add("show");
+        $("#imagePreviewModal").setAttribute("aria-hidden", "false");
+    }
+    function closeImagePreview() {
+        $("#imagePreviewModal").classList.remove("show");
+        $("#imagePreviewModal").setAttribute("aria-hidden", "true");
+        $("#imagePreviewFull").removeAttribute("src");
+    }
+    function makePreviewOpenable(element) {
+        element.classList.add("preview-openable");
+        element.setAttribute("title", t("openPreview"));
+        element.setAttribute("aria-label", t("openPreview"));
+        element.addEventListener("click", function () {
+            if (element instanceof HTMLCanvasElement) {
+                openImagePreview(element.toDataURL("image/png"));
+                return;
+            }
+            openImagePreview(element.dataset.previewUrl || element.currentSrc || element.src);
+        });
+    }
     function setPreviewImage(container, blob) {
+        if (container.dataset.previewUrl)
+            URL.revokeObjectURL(container.dataset.previewUrl);
         container.innerHTML = "";
         var url = URL.createObjectURL(blob);
+        container.dataset.previewUrl = url;
         var img = new Image();
-        img.onload = function () { URL.revokeObjectURL(url); };
         img.src = url;
+        img.dataset.previewUrl = url;
+        makePreviewOpenable(img);
         container.appendChild(img);
     }
     function setTool(tool) {
@@ -414,6 +448,7 @@
         canvas.height = sh;
         canvas.getContext("2d").drawImage(crop.img, sx, sy, sw, sh, 0, 0, sw, sh);
         crop.canvas = canvas;
+        makePreviewOpenable(canvas);
         var preview = $("#cropPreview");
         preview.innerHTML = "";
         preview.appendChild(canvas);
@@ -839,6 +874,7 @@
         var layout = makeStitchLayout(0);
         var canvas = makeStitchCanvas(stitch.previewMaxEdge);
         stitch.canvas = canvas;
+        makePreviewOpenable(canvas);
         var preview = $("#stitchPreview");
         preview.innerHTML = "";
         preview.appendChild(canvas);
@@ -975,6 +1011,15 @@
         var nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
         localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
         applyTheme(nextTheme);
+    });
+    $("#imagePreviewClose").addEventListener("click", closeImagePreview);
+    $("#imagePreviewModal").addEventListener("click", function (event) {
+        if (event.target === $("#imagePreviewModal"))
+            closeImagePreview();
+    });
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && $("#imagePreviewModal").classList.contains("show"))
+            closeImagePreview();
     });
     if (window.matchMedia) {
         window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (event) {

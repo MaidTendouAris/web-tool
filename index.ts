@@ -58,8 +58,10 @@ type LanguagePack = {
   resourceReady: string;
   resourceMissing: string;
   resourceError: string;
+  resourceChecking: string;
   resourceDownloading: string;
   resourceDownload: string;
+  resourceManualDownload: string;
   resourceDownloadToCache: string;
   resourceImport: string;
   resourceClearCache: string;
@@ -77,7 +79,7 @@ type LanguagePack = {
 
 type I18nKey = keyof LanguagePack;
 
-type ResourceState = "pending" | "ready" | "missing" | "error" | "downloading";
+type ResourceState = "pending" | "ready" | "missing" | "error" | "checking" | "downloading";
 
 type ManagedResource = {
   id: string;
@@ -145,8 +147,10 @@ const LANGUAGE_TABLE: Record<SupportedLanguage, LanguagePack> = {
     resourceReady: "已就绪",
     resourceMissing: "缺失",
     resourceError: "检查失败",
+    resourceChecking: "检查中",
     resourceDownloading: "下载中",
     resourceDownload: "下载",
+    resourceManualDownload: "手动下载",
     resourceDownloadToCache: "下载到缓存",
     resourceImport: "导入",
     resourceClearCache: "清除缓存",
@@ -219,8 +223,10 @@ const LANGUAGE_TABLE: Record<SupportedLanguage, LanguagePack> = {
     resourceReady: "Ready",
     resourceMissing: "Missing",
     resourceError: "Check failed",
+    resourceChecking: "Checking",
     resourceDownloading: "Downloading",
     resourceDownload: "Download",
+    resourceManualDownload: "Manual download",
     resourceDownloadToCache: "Download to cache",
     resourceImport: "Import",
     resourceClearCache: "Clear cache",
@@ -377,6 +383,7 @@ function getResourceStatusText(resource: ManagedResource, state: ResourceState):
   if (state === "ready") return getText("resourceReady");
   if (state === "missing") return getText("resourceMissing");
   if (state === "error") return getText("resourceError");
+  if (state === "checking") return getText("resourceChecking");
   if (state === "downloading") {
     const progress = cacheResourceDownloadProgress.get(resource.id);
     return typeof progress === "number" ? progress + "%" : getText("resourceDownloading");
@@ -402,8 +409,7 @@ function renderResources(): void {
   resourceList.innerHTML = "";
   RESOURCE_TABLE.forEach((resource) => {
     const state = cacheResourceStates.get(resource.id) || "pending";
-    const pathText = getText("resourceCacheHint") + resource.id;
-    const disabledAttribute = state === "downloading" ? " disabled" : "";
+    const disabledAttribute = state === "downloading" || state === "checking" ? " disabled" : "";
     const primaryAction = '<button class="resource-download" type="button" data-resource-action="import" data-resource-id="' + resource.id + '"' + disabledAttribute + ">" + getText("resourceImport") + "</button>"
       + '<button class="resource-download" type="button" data-resource-action="download-cache" data-resource-id="' + resource.id + '"' + disabledAttribute + ">" + getText("resourceDownloadToCache") + "</button>";
     const secondaryAction = state === "ready"
@@ -417,7 +423,8 @@ function renderResources(): void {
       '<div class="resource-desc">' + getText(resource.descriptionKey) + "</div>",
       "</div>",
       "<div>",
-      '<div class="resource-path">' + pathText + "</div>",
+      '<div class="resource-path"><span>' + getText("resourceManualDownload") + ":</span> "
+        + '<a href="' + resource.downloadUrl + '" target="_blank" rel="noopener noreferrer">' + resource.fileName + "</a></div>",
       "</div>",
       "<div>",
       '<div class="resource-status ' + state + '">' + getResourceStatusText(resource, state) + "</div>",
@@ -475,13 +482,17 @@ function getCachedResource(resource: ManagedResource): Promise<any> {
 }
 
 async function checkCachedResource(resource: ManagedResource): Promise<ResourceState> {
-  if (!supportsResourceCache()) return "error";
+  if (!supportsResourceCache()) return "missing";
   try {
     const record = await getCachedResource(resource);
     return record && record.content ? "ready" : "missing";
   } catch (_error) {
-    return "error";
+    return "missing";
   }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 function chooseResourceFile(resource: ManagedResource): Promise<File> {
@@ -615,11 +626,24 @@ async function clearCachedResource(resource: ManagedResource): Promise<void> {
   }
 }
 
-async function checkResources(): Promise<void> {
-  await Promise.all(RESOURCE_TABLE.map(async (resource) => {
-    if (cacheResourceStates.get(resource.id) === "downloading") return;
-    cacheResourceStates.set(resource.id, await checkCachedResource(resource));
-  }));
+async function checkResources(showChecking = false): Promise<void> {
+  const resourcesToCheck = RESOURCE_TABLE.filter((resource) => cacheResourceStates.get(resource.id) !== "downloading");
+  if (showChecking) {
+    resourcesToCheck.forEach((resource) => cacheResourceStates.set(resource.id, "checking"));
+    renderResources();
+  }
+
+  const checkTask = Promise.all(resourcesToCheck.map(async (resource) => ({
+    resource,
+    state: await checkCachedResource(resource)
+  })));
+  const results = showChecking
+    ? await Promise.all([checkTask, delay(600)]).then(([states]) => states)
+    : await checkTask;
+
+  results.forEach(({ resource, state }) => {
+    cacheResourceStates.set(resource.id, state);
+  });
   renderResources();
 }
 
@@ -655,7 +679,12 @@ themeButton?.addEventListener("click", () => {
 });
 
 refreshResourcesButton?.addEventListener("click", async () => {
-  await checkResources();
+  refreshResourcesButton.disabled = true;
+  try {
+    await checkResources(true);
+  } finally {
+    refreshResourcesButton.disabled = !supportsResourceCache();
+  }
 });
 
 window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener("change", (event) => {

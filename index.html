@@ -330,6 +330,7 @@
       cursor: pointer;
       font-weight: 700;
       white-space: nowrap;
+      transition: transform .12s ease, border-color .12s ease, background-color .12s ease, color .12s ease, box-shadow .12s ease;
     }
 
     .resource-button.secondary {
@@ -341,6 +342,11 @@
     .resource-button.secondary:hover {
       border-color: var(--blue);
       color: var(--blue);
+    }
+
+    .resource-button:not(:disabled):active {
+      transform: translateY(1px) scale(.98);
+      box-shadow: 0 0 0 4px var(--ring);
     }
 
     .resource-button:disabled {
@@ -382,6 +388,15 @@
       word-break: break-all;
     }
 
+    .resource-path a {
+      color: var(--blue);
+      font-weight: 800;
+    }
+
+    .resource-path a:hover {
+      text-decoration: underline;
+    }
+
     .resource-status {
       display: inline-flex;
       align-items: center;
@@ -415,6 +430,11 @@
       color: var(--blue);
     }
 
+    .resource-status.checking {
+      border-color: color-mix(in srgb, var(--blue) 70%, var(--line));
+      color: var(--blue);
+    }
+
     .resource-download {
       display: inline-flex;
       align-items: center;
@@ -428,6 +448,17 @@
       cursor: pointer;
       font-weight: 800;
       white-space: nowrap;
+      transition: transform .12s ease, border-color .12s ease, background-color .12s ease, color .12s ease, box-shadow .12s ease;
+    }
+
+    .resource-download:not(:disabled):hover {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px var(--ring);
+    }
+
+    .resource-download:not(:disabled):active {
+      transform: translateY(1px) scale(.98);
+      background: color-mix(in srgb, var(--blue) 10%, var(--panel));
     }
 
     .resource-download:disabled {
@@ -596,7 +627,7 @@
   <main class="shell">
     <div class="topbar">
       <a class="github-link" href="https://github.com/MaidTendouAris/web-tools" target="_blank" rel="noopener noreferrer">GitHub</a>
-      <span class="version-badge">V1.1.2</span>
+      <span class="version-badge">V1.1.3</span>
       <div class="language" aria-label="Language">
         <button type="button" data-lang="zh">中文</button>
         <button type="button" data-lang="en">EN</button>

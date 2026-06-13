@@ -125,7 +125,11 @@
     audio { width: 100%; }
     canvas { width: 100%; height: 120px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
     .preview-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    .file-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; margin-top: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
+    .preview-selector { display: grid; gap: 6px; margin-top: 12px; color: var(--muted); font-size: 13px; font-weight: 700; }
+    .preview-selector select { font-weight: 700; }
+    .file-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; margin-top: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); cursor: pointer; transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease; }
+    .file-card:hover { border-color: var(--blue); }
+    .file-card.active { border-color: var(--blue); background: color-mix(in srgb, var(--blue) 8%, var(--panel)); box-shadow: 0 0 0 3px var(--ring); }
     .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
     .file-meta { margin-top: 3px; color: var(--muted); font-size: 12px; }
     .icon-btn { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--muted); cursor: pointer; }
@@ -177,7 +181,7 @@
     <nav class="topbar" aria-label="页面导航" id="navLabel">
       <a class="home" href="../index.html">‹ <span id="homeLink">工具集</span></a>
       <div class="controls">
-        <span class="version-badge">V1.0.0</span>
+        <span class="version-badge">V1.1.0</span>
         <div class="language" aria-label="Language">
           <button class="active" type="button" data-lang="zh">中文</button>
           <button type="button" data-lang="en">EN</button>
@@ -210,7 +214,7 @@
       <div class="card">
         <h2 id="inputTitle">输入文件</h2>
         <label class="upload" id="uploadLabel">
-          <input id="fileInput" type="file" accept="audio/*,.mp3,.aac,.ogg,.m4a,.wav,.flac,.opus,.mp4">
+          <input id="fileInput" type="file" accept="audio/*,.mp3,.aac,.ogg,.m4a,.wav,.flac,.opus,.mp4" multiple>
           <span>
             <strong id="uploadTitle">选择或拖放音频文件</strong>
             <span id="uploadHint">支持 MP3/AAC/OGG/M4A/WAV/FLAC/OPUS 等常见格式。</span>

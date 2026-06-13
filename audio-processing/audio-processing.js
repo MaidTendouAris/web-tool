@@ -97,6 +97,9 @@
             size: "大小",
             bitrate: "码率",
             streams: "流",
+            files: "文件数",
+            previewFile: "当前预览",
+            previewSelect: "预览音频",
             remove: "移除"
         },
         en: {
@@ -176,12 +179,16 @@
             size: "Size",
             bitrate: "Bitrate",
             streams: "Streams",
+            files: "Files",
+            previewFile: "Preview",
+            previewSelect: "Preview audio",
             remove: "Remove"
         }
     };
     var $ = function (selector) { return document.querySelector(selector); };
     var $$ = function (selector) { return Array.from(document.querySelectorAll(selector)); };
     var currentLanguage = resolveInitialLanguage();
+    var selectedFiles = [];
     var currentTool = "convert";
     var singleFile = null;
     var previewUrl = "";
@@ -326,6 +333,121 @@
     }
     function fileName(sourceName, suffix) {
         return sourceName.replace(/\.[^.]+$/, "") + "." + suffix;
+    }
+    function safeZipName(name) {
+        return (name || "output").replace(/[\\/:*?"<>|]+/g, "-");
+    }
+    function uniqueName(name, used) {
+        var clean = safeZipName(name);
+        if (!used[clean]) {
+            used[clean] = true;
+            return clean;
+        }
+        var dot = clean.lastIndexOf(".");
+        var base = dot > 0 ? clean.slice(0, dot) : clean;
+        var ext = dot > 0 ? clean.slice(dot) : "";
+        var index = 2;
+        while (used[base + "-" + index + ext])
+            index++;
+        var next = base + "-" + index + ext;
+        used[next] = true;
+        return next;
+    }
+    var crcTable = null;
+    function getCrcTable() {
+        if (crcTable)
+            return crcTable;
+        crcTable = [];
+        for (var n = 0; n < 256; n++) {
+            var c = n;
+            for (var k = 0; k < 8; k++)
+                c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+            crcTable[n] = c >>> 0;
+        }
+        return crcTable;
+    }
+    function crc32(bytes) {
+        var table = getCrcTable();
+        var crc = 0xffffffff;
+        for (var index = 0; index < bytes.length; index++) {
+            crc = table[(crc ^ bytes[index]) & 0xff] ^ (crc >>> 8);
+        }
+        return (crc ^ 0xffffffff) >>> 0;
+    }
+    function dosDateTime(date) {
+        var time = (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2);
+        var day = (date.getFullYear() - 1980) << 9 | ((date.getMonth() + 1) << 5) | date.getDate();
+        return { time: time, date: day };
+    }
+    function writeUint16(bytes, offset, value) {
+        bytes[offset] = value & 0xff;
+        bytes[offset + 1] = (value >>> 8) & 0xff;
+    }
+    function writeUint32(bytes, offset, value) {
+        bytes[offset] = value & 0xff;
+        bytes[offset + 1] = (value >>> 8) & 0xff;
+        bytes[offset + 2] = (value >>> 16) & 0xff;
+        bytes[offset + 3] = (value >>> 24) & 0xff;
+    }
+    async function createZip(files) {
+        var encoder = new TextEncoder();
+        var now = dosDateTime(new Date());
+        var localParts = [];
+        var centralParts = [];
+        var offset = 0;
+        for (var index = 0; index < files.length; index++) {
+            var file = files[index];
+            var nameBytes = encoder.encode(file.name);
+            var data = new Uint8Array(await file.blob.arrayBuffer());
+            var crc = crc32(data);
+            var local = new Uint8Array(30 + nameBytes.length + data.length);
+            writeUint32(local, 0, 0x04034b50);
+            writeUint16(local, 4, 20);
+            writeUint16(local, 6, 0x0800);
+            writeUint16(local, 8, 0);
+            writeUint16(local, 10, now.time);
+            writeUint16(local, 12, now.date);
+            writeUint32(local, 14, crc);
+            writeUint32(local, 18, data.length);
+            writeUint32(local, 22, data.length);
+            writeUint16(local, 26, nameBytes.length);
+            local.set(nameBytes, 30);
+            local.set(data, 30 + nameBytes.length);
+            localParts.push(local);
+            var central = new Uint8Array(46 + nameBytes.length);
+            writeUint32(central, 0, 0x02014b50);
+            writeUint16(central, 4, 20);
+            writeUint16(central, 6, 20);
+            writeUint16(central, 8, 0x0800);
+            writeUint16(central, 10, 0);
+            writeUint16(central, 12, now.time);
+            writeUint16(central, 14, now.date);
+            writeUint32(central, 16, crc);
+            writeUint32(central, 20, data.length);
+            writeUint32(central, 24, data.length);
+            writeUint16(central, 28, nameBytes.length);
+            writeUint32(central, 42, offset);
+            central.set(nameBytes, 46);
+            centralParts.push(central);
+            offset += local.length;
+        }
+        var centralSize = centralParts.reduce(function (sum, part) { return sum + part.length; }, 0);
+        var end = new Uint8Array(22);
+        writeUint32(end, 0, 0x06054b50);
+        writeUint16(end, 8, files.length);
+        writeUint16(end, 10, files.length);
+        writeUint32(end, 12, centralSize);
+        writeUint32(end, 16, offset);
+        var parts = localParts.concat(centralParts, [end]);
+        var totalLength = parts.reduce(function (sum, part) { return sum + part.length; }, 0);
+        var zipBuffer = new ArrayBuffer(totalLength);
+        var zipBytes = new Uint8Array(zipBuffer);
+        var zipOffset = 0;
+        parts.forEach(function (part) {
+            zipBytes.set(part, zipOffset);
+            zipOffset += part.length;
+        });
+        return new Blob([zipBuffer], { type: "application/zip" });
     }
     function splitArgs(text) {
         var matches = (text || "").match(/"[^"]*"|'[^']*'|\S+/g) || [];
@@ -497,42 +619,90 @@
     function renderFile() {
         var box = $("#fileBox");
         box.innerHTML = "";
-        if (!singleFile)
-            return;
-        var card = document.createElement("div");
-        card.className = "file-card";
-        card.innerHTML = [
-            "<div>",
-            '<div class="file-name">' + singleFile.name + "</div>",
-            '<div class="file-meta">' + formatBytes(singleFile.size) + " · " + (singleFile.type || getExt(singleFile.name)) + "</div>",
-            "</div>",
-            '<button class="icon-btn" type="button" aria-label="' + t("remove") + '">×</button>'
-        ].join("");
-        card.querySelector("button")?.addEventListener("click", function () {
-            singleFile = null;
-            if (previewUrl)
-                URL.revokeObjectURL(previewUrl);
-            previewUrl = "";
+        if (selectedFiles.length) {
+            var selectorLabel = document.createElement("label");
+            selectorLabel.className = "preview-selector";
+            selectorLabel.textContent = t("previewSelect");
+            var selector = document.createElement("select");
+            selectedFiles.forEach(function (file, index) {
+                var option = document.createElement("option");
+                option.value = String(index);
+                option.textContent = String(index + 1) + ". " + file.name;
+                selector.appendChild(option);
+            });
+            selector.value = String(Math.max(0, selectedFiles.indexOf(singleFile)));
+            selector.addEventListener("change", function () {
+                var nextFile = selectedFiles[Number(selector.value)] || selectedFiles[0] || null;
+                void setPreviewFile(nextFile);
+            });
+            selectorLabel.appendChild(selector);
+            box.appendChild(selectorLabel);
+        }
+        selectedFiles.forEach(function (file, index) {
+            var card = document.createElement("div");
+            var isPreview = file === singleFile;
+            card.className = "file-card" + (isPreview ? " active" : "");
+            var info = document.createElement("div");
+            var name = document.createElement("div");
+            name.className = "file-name";
+            name.textContent = file.name;
+            var meta = document.createElement("div");
+            meta.className = "file-meta";
+            meta.textContent = formatBytes(file.size) + " · " + (file.type || getExt(file.name)) + (isPreview ? " · " + t("previewFile") : "");
+            info.appendChild(name);
+            info.appendChild(meta);
+            var removeButton = document.createElement("button");
+            removeButton.className = "icon-btn";
+            removeButton.type = "button";
+            removeButton.setAttribute("aria-label", t("remove"));
+            removeButton.textContent = "×";
+            card.addEventListener("click", function () {
+                void setPreviewFile(file);
+            });
+            removeButton.addEventListener("click", function (event) {
+                event.stopPropagation();
+                var wasPreview = file === singleFile;
+                selectedFiles = selectedFiles.filter(function (_file, fileIndex) { return fileIndex !== index; });
+                if (wasPreview) {
+                    void setPreviewFile(selectedFiles[Math.min(index, selectedFiles.length - 1)] || null);
+                }
+                else {
+                    renderFile();
+                }
+                if (!selectedFiles.length)
+                    setStatus("waitingInput");
+            });
+            card.appendChild(info);
+            card.appendChild(removeButton);
+            box.appendChild(card);
+        });
+    }
+    async function setPreviewFile(file) {
+        singleFile = file;
+        if (previewUrl)
+            URL.revokeObjectURL(previewUrl);
+        previewUrl = "";
+        if (!file) {
             $("#audioPlayer").removeAttribute("src");
             $("#audioPlayer").load();
             $("#playerBox").classList.remove("show");
             renderWaveform(null);
             renderFile();
-            setStatus("waitingInput");
-        });
-        box.appendChild(card);
-    }
-    async function loadFile(file) {
-        singleFile = file;
-        if (previewUrl)
-            URL.revokeObjectURL(previewUrl);
+            return;
+        }
         previewUrl = URL.createObjectURL(file);
         $("#audioPlayer").src = previewUrl;
+        $("#audioPlayer").volume = 0.5;
         $("#playerBox").classList.add("show");
         renderFile();
         setStatus("loadingFile");
         await drawWaveform(file);
         $("#statusLine").textContent = t("done");
+    }
+    async function loadFiles(files) {
+        selectedFiles = Array.from(files);
+        await setPreviewFile(selectedFiles[0] || null);
+        renderFile();
     }
     function setupUpload() {
         var upload = $("#uploadLabel");
@@ -546,14 +716,12 @@
         upload.addEventListener("drop", function (event) {
             event.preventDefault();
             upload.classList.remove("dragover");
-            var file = event.dataTransfer.files && event.dataTransfer.files[0];
-            if (file)
-                void loadFile(file);
+            if (event.dataTransfer.files && event.dataTransfer.files.length)
+                void loadFiles(event.dataTransfer.files);
         });
         $("#fileInput").addEventListener("change", function (event) {
-            var file = event.target.files && event.target.files[0];
-            if (file)
-                void loadFile(file);
+            if (event.target.files && event.target.files.length)
+                void loadFiles(event.target.files);
             event.target.value = "";
         });
     }
@@ -712,14 +880,15 @@
         box.innerHTML = "<pre></pre>";
         box.querySelector("pre").textContent = text || "-";
     }
-    async function prepareInput() {
-        if (!singleFile)
+    async function prepareInput(file) {
+        var targetFile = file || singleFile;
+        if (!targetFile)
             throw new Error(t("needFile"));
         var core = await getCore();
         core.reset();
-        var inputName = "input." + getExt(singleFile.name);
-        await writeFileToCore(core, inputName, singleFile);
-        return { core: core, inputName: inputName, file: singleFile };
+        var inputName = "input." + getExt(targetFile.name);
+        await writeFileToCore(core, inputName, targetFile);
+        return { core: core, inputName: inputName, file: targetFile };
     }
     async function runFFmpeg(args) {
         var core = await getCore();
@@ -811,15 +980,27 @@
         safeUnlink(core, outputName);
     }
     async function handleConvert() {
-        var prepared = await prepareInput();
+        if (!selectedFiles.length)
+            throw new Error(t("needFile"));
         var format = $("#convertFormat").value;
-        var outputName = fileName(prepared.file.name, format);
-        var args = ["-i", prepared.inputName].concat(splitArgs($("#encodeArgs").value), splitArgs($("#convertAdvancedArgs").value), [outputName]);
-        var core = await runFFmpeg(args);
-        showDownload(readOutputBlob(core, outputName, format), outputName);
-        showSummary([{ label: t("format"), value: format.toUpperCase() }, { label: t("size"), value: formatBytes(core.FS.stat(outputName).size) }]);
-        safeUnlink(core, prepared.inputName);
-        safeUnlink(core, outputName);
+        var zipFiles = [];
+        var usedNames = {};
+        var totalSize = 0;
+        for (var index = 0; index < selectedFiles.length; index++) {
+            var prepared = await prepareInput(selectedFiles[index]);
+            var outputName = uniqueName(fileName(prepared.file.name, format), usedNames);
+            appendLog("[" + (index + 1) + "/" + selectedFiles.length + "] " + prepared.file.name);
+            var args = ["-i", prepared.inputName].concat(splitArgs($("#encodeArgs").value), splitArgs($("#convertAdvancedArgs").value), [outputName]);
+            var core = await runFFmpeg(args);
+            var blob = readOutputBlob(core, outputName, format);
+            totalSize += blob.size;
+            zipFiles.push({ name: outputName, blob: blob });
+            safeUnlink(core, prepared.inputName);
+            safeUnlink(core, outputName);
+        }
+        var zip = await createZip(zipFiles);
+        showDownload(zip, "converted-audio.zip");
+        showSummary([{ label: t("format"), value: format.toUpperCase() }, { label: t("files"), value: String(zipFiles.length) }, { label: t("size"), value: formatBytes(totalSize) }]);
     }
     async function handleCut() {
         var prepared = await prepareInput();
@@ -837,15 +1018,27 @@
         safeUnlink(core, outputName);
     }
     async function handleRemux() {
-        var prepared = await prepareInput();
+        if (!selectedFiles.length)
+            throw new Error(t("needFile"));
         var format = $("#remuxFormat").value;
-        var outputName = fileName(prepared.file.name, "remux." + format);
-        var args = ["-i", prepared.inputName].concat(splitArgs($("#remuxArgs").value), [outputName]);
-        var core = await runFFmpeg(args);
-        showDownload(readOutputBlob(core, outputName, format), outputName);
-        showSummary([{ label: t("format"), value: format.toUpperCase() }, { label: t("size"), value: formatBytes(core.FS.stat(outputName).size) }]);
-        safeUnlink(core, prepared.inputName);
-        safeUnlink(core, outputName);
+        var zipFiles = [];
+        var usedNames = {};
+        var totalSize = 0;
+        for (var index = 0; index < selectedFiles.length; index++) {
+            var prepared = await prepareInput(selectedFiles[index]);
+            var outputName = uniqueName(fileName(prepared.file.name, "remux." + format), usedNames);
+            appendLog("[" + (index + 1) + "/" + selectedFiles.length + "] " + prepared.file.name);
+            var args = ["-i", prepared.inputName].concat(splitArgs($("#remuxArgs").value), [outputName]);
+            var core = await runFFmpeg(args);
+            var blob = readOutputBlob(core, outputName, format);
+            totalSize += blob.size;
+            zipFiles.push({ name: outputName, blob: blob });
+            safeUnlink(core, prepared.inputName);
+            safeUnlink(core, outputName);
+        }
+        var zip = await createZip(zipFiles);
+        showDownload(zip, "remuxed-audio.zip");
+        showSummary([{ label: t("format"), value: format.toUpperCase() }, { label: t("files"), value: String(zipFiles.length) }, { label: t("size"), value: formatBytes(totalSize) }]);
     }
     async function handleVolume() {
         var prepared = await prepareInput();

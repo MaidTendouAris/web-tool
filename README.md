@@ -71,7 +71,12 @@ tsc --ignoreConfig --noEmit --strict false --noImplicitAny false --target ES2020
 
 ## License
 
-MIT. See [LICENSE](./LICENSE).
+This repository's own source code is licensed under the MIT License. See
+[LICENSE](./LICENSE).
+
+Optional runtime files loaded through Resource Management, including
+FFmpeg.wasm and pdf-lib assets, remain governed by their own licenses. See
+[THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
 
 ---
 
