@@ -29,7 +29,7 @@
       title: "音频处理",
       home: "工具集",
       themeToggle: "切换主题",
-      lead: "使用本地 FFmpeg.wasm 资源进行音频转换、剪切、转封装、元数据编辑、预览和音量处理。",
+      lead: "使用本地 FFmpeg.wasm 资源进行音频转换、剪切、转封装、元数据编辑、预览、音量和速度处理。",
       engineIdle: "尚未加载",
       engineLoading: "正在加载本地 FFmpeg 资源...",
       engineReady: "已加载，可开始处理",
@@ -42,6 +42,7 @@
       remuxTab: "转封装",
       metadataTab: "元数据",
       volumeTab: "音量增益",
+      speedTab: "速度调整",
       inputTitle: "输入文件",
       uploadTitle: "选择或拖放音频文件",
       uploadHint: "支持 MP3/AAC/OGG/M4A/WAV/FLAC/OPUS 等常见格式。",
@@ -81,6 +82,13 @@
       volumeFormat: "输出格式",
       volumeArgs: "编码参数",
       volume: "应用增益",
+      speed: "调整速度",
+      speedFactor: "速度倍率",
+      speedFormat: "输出格式",
+      speedArgs: "编码参数",
+      keepPitch: "保持音高不变",
+      previewSpeed: "应用到预览",
+      invalidSpeed: "速度倍率必须在 0.10x 到 16.00x 之间。",
       outputTitle: "输出",
       logTitle: "日志",
       waitingInput: "等待输入文件",
@@ -111,7 +119,7 @@
       title: "Audio Processing",
       home: "Tools",
       themeToggle: "Toggle theme",
-      lead: "Use local FFmpeg.wasm resources for audio conversion, trimming, remuxing, metadata editing, preview, and gain processing.",
+      lead: "Use local FFmpeg.wasm resources for audio conversion, trimming, remuxing, metadata editing, preview, gain, and speed processing.",
       engineIdle: "Not loaded",
       engineLoading: "Loading local FFmpeg resources...",
       engineReady: "Loaded and ready",
@@ -124,6 +132,7 @@
       remuxTab: "Remux",
       metadataTab: "Metadata",
       volumeTab: "Gain",
+      speedTab: "Speed",
       inputTitle: "Input File",
       uploadTitle: "Choose or drop an audio file",
       uploadHint: "Supports common formats such as MP3, AAC, OGG, M4A, WAV, FLAC, and OPUS.",
@@ -163,6 +172,13 @@
       volumeFormat: "Output format",
       volumeArgs: "Encoding args",
       volume: "Apply Gain",
+      speed: "Adjust Speed",
+      speedFactor: "Speed",
+      speedFormat: "Output format",
+      speedArgs: "Encoding args",
+      keepPitch: "Keep pitch",
+      previewSpeed: "Apply to Preview",
+      invalidSpeed: "Speed must be between 0.10x and 16.00x.",
       outputTitle: "Output",
       logTitle: "Log",
       waitingInput: "Waiting for input",
@@ -252,6 +268,7 @@
     setText('[data-tool="remux"]', "remuxTab");
     setText('[data-tool="metadata"]', "metadataTab");
     setText('[data-tool="volume"]', "volumeTab");
+    setText('[data-tool="speed"]', "speedTab");
     setText("#inputTitle", "inputTitle");
     setText("#uploadTitle", "uploadTitle");
     setText("#uploadHint", "uploadHint");
@@ -285,6 +302,11 @@
     setText("#gainLabel", "gain");
     setText("#volumeFormatLabel", "volumeFormat");
     setText("#volumeArgsLabel", "volumeArgs");
+    setText("#speedLabel", "speedFactor");
+    setText("#speedFormatLabel", "speedFormat");
+    setText("#keepPitchLabel", "keepPitch");
+    setText("#speedArgsLabel", "speedArgs");
+    setText("#applyPreviewSpeed", "previewSpeed");
     setText("#outputTitle", "outputTitle");
     setText("#logTitle", "logTitle");
     setButtonText('[data-action="convert"]', "convert");
@@ -293,6 +315,7 @@
     setButtonText('[data-action="read-metadata"]', "readMetadata");
     setButtonText('[data-action="write-metadata"]', "writeMetadata");
     setButtonText('[data-action="volume"]', "volume");
+    setButtonText('[data-action="speed"]', "speed");
     $$(".language button[data-lang]").forEach(function (button) {
       button.classList.toggle("active", button.dataset.lang === language);
     });
@@ -485,6 +508,49 @@
 
   function cutEncodeArgs(format: string) {
     return audioEncodeArgs(format) + " -avoid_negative_ts make_zero";
+  }
+
+  function readSpeedFactor() {
+    var speed = Number($("#speedInput").value);
+    if (!Number.isFinite(speed)) speed = 1;
+    speed = Math.round(speed * 100) / 100;
+    speed = Math.min(16, Math.max(0.1, speed));
+    $("#speedInput").value = speed.toFixed(2).replace(/\.?0+$/, "");
+    return speed;
+  }
+
+  function formatSpeed(speed: number) {
+    return speed.toFixed(2).replace(/\.?0+$/, "") + "x";
+  }
+
+  function cleanFilterNumber(value: number) {
+    return value.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
+  }
+
+  function buildAtempoFilter(speed: number) {
+    var remaining = speed;
+    var parts: number[] = [];
+    while (remaining < 0.5) {
+      parts.push(0.5);
+      remaining /= 0.5;
+    }
+    while (remaining > 2) {
+      parts.push(2);
+      remaining /= 2;
+    }
+    parts.push(remaining);
+    return parts.map(function (part) { return "atempo=" + cleanFilterNumber(part); }).join(",");
+  }
+
+  function buildSpeedFilter(speed: number, keepPitch: boolean) {
+    if (keepPitch) return buildAtempoFilter(speed);
+    return "asetrate=" + Math.max(1, Math.round(44100 * speed)) + ",aresample=44100";
+  }
+
+  function applyPreviewSpeed() {
+    var speed = readSpeedFactor();
+    $("#audioPlayer").playbackRate = speed;
+    $("#audioPlayer").defaultPlaybackRate = speed;
   }
 
   function clearPreviewStopTimer() {
@@ -1074,6 +1140,32 @@
     safeUnlink(core, outputName);
   }
 
+  async function handleSpeed() {
+    if (!selectedFiles.length) throw new Error(t("needFile"));
+    var format = $("#speedFormat").value;
+    var speed = readSpeedFactor();
+    var keepPitch = Boolean($("#keepPitchInput").checked);
+    var filter = buildSpeedFilter(speed, keepPitch);
+    var zipFiles: Array<{ name: string; blob: Blob }> = [];
+    var usedNames: Record<string, boolean> = {};
+    var totalSize = 0;
+    for (var index = 0; index < selectedFiles.length; index++) {
+      var prepared = await prepareInput(selectedFiles[index]);
+      var outputName = uniqueName(fileName(prepared.file.name, "speed-" + formatSpeed(speed).replace("x", "") + "." + format), usedNames);
+      appendLog("[" + (index + 1) + "/" + selectedFiles.length + "] " + prepared.file.name);
+      var args = ["-i", prepared.inputName, "-af", filter].concat(splitArgs($("#speedArgs").value), [outputName]);
+      var core = await runFFmpeg(args);
+      var blob = readOutputBlob(core, outputName, format);
+      totalSize += blob.size;
+      zipFiles.push({ name: outputName, blob: blob });
+      safeUnlink(core, prepared.inputName);
+      safeUnlink(core, outputName);
+    }
+    var zip = await createZip(zipFiles);
+    showDownload(zip, "speed-adjusted-audio.zip");
+    showSummary([{ label: t("format"), value: format.toUpperCase() }, { label: t("files"), value: String(zipFiles.length) }, { label: t("speedFactor"), value: formatSpeed(speed) }, { label: t("size"), value: formatBytes(totalSize) }]);
+  }
+
   async function runAction(action: string) {
     if (running) return;
     running = true;
@@ -1087,6 +1179,7 @@
       if (action === "read-metadata") await handleReadMetadata();
       if (action === "write-metadata") await handleWriteMetadata();
       if (action === "volume") await handleVolume();
+      if (action === "speed") await handleSpeed();
       setStatus("done");
     } catch (error) {
       setStatus("failed");
@@ -1120,6 +1213,10 @@
 
   function syncRemuxDefaultArgs() {
     $("#remuxArgs").value = audioEncodeArgs($("#remuxFormat").value);
+  }
+
+  function syncSpeedDefaultArgs() {
+    $("#speedArgs").value = audioEncodeArgs($("#speedFormat").value);
   }
 
   setupUpload();
@@ -1158,6 +1255,15 @@
   $("#convertFormat").addEventListener("change", syncDefaultArgs);
   $("#cutFormat").addEventListener("change", syncCutDefaultArgs);
   $("#remuxFormat").addEventListener("change", syncRemuxDefaultArgs);
+  $("#speedFormat").addEventListener("change", syncSpeedDefaultArgs);
+  $("#speedInput").addEventListener("change", readSpeedFactor);
+  $("#applyPreviewSpeed").addEventListener("click", applyPreviewSpeed);
+  $$("#speedPresets [data-speed]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      $("#speedInput").value = button.dataset.speed;
+      applyPreviewSpeed();
+    });
+  });
   $("[data-action='read-metadata']").addEventListener("click", function () { runAction("read-metadata"); });
   $("[data-action='write-metadata']").addEventListener("click", function () { runAction("write-metadata"); });
   $$(".run-btn").forEach(function (button) {
@@ -1182,5 +1288,6 @@
   syncDefaultArgs();
   syncCutDefaultArgs();
   syncRemuxDefaultArgs();
+  syncSpeedDefaultArgs();
   setTool("convert");
 })();

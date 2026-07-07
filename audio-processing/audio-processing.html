@@ -139,6 +139,10 @@
     .tool-panel.active { display: block; }
     .tool-panel > label + .run-btn { margin-top: 14px; }
     .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: end; margin-bottom: 14px; }
+    .speed-presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .speed-presets button { min-height: 32px; padding: 6px 10px; }
+    .switch-row { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 14px; color: var(--text); font-size: 14px; font-weight: 800; cursor: pointer; }
+    .switch-row input { width: 18px; min-height: 18px; padding: 0; accent-color: var(--blue); }
     label { display: grid; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 700; }
     input, select, textarea {
       width: 100%; min-height: 38px; border: 1px solid var(--line); border-radius: 8px;
@@ -181,7 +185,7 @@
     <nav class="topbar" aria-label="页面导航" id="navLabel">
       <a class="home" href="../index.html">‹ <span id="homeLink">工具集</span></a>
       <div class="controls">
-        <span class="version-badge">V1.1.0</span>
+        <span class="version-badge">V1.2.0</span>
         <div class="language" aria-label="Language">
           <button class="active" type="button" data-lang="zh">中文</button>
           <button type="button" data-lang="en">EN</button>
@@ -193,7 +197,7 @@
     <section class="hero">
       <div>
         <h1 id="pageTitle">音频处理</h1>
-        <p class="lead" id="pageLead">使用本地 FFmpeg.wasm 资源进行音频转换、剪切、转封装、元数据编辑、预览和音量处理。</p>
+        <p class="lead" id="pageLead">使用本地 FFmpeg.wasm 资源进行音频转换、剪切、转封装、元数据编辑、预览、音量和速度处理。</p>
       </div>
       <div class="engine-card">
         <strong id="engineTitle">FFmpeg Core</strong>
@@ -208,6 +212,7 @@
       <button type="button" data-tool="remux">转封装</button>
       <button type="button" data-tool="metadata">元数据</button>
       <button type="button" data-tool="volume">音量增益</button>
+      <button type="button" data-tool="speed">速度调整</button>
     </div>
 
     <section class="workspace">
@@ -322,6 +327,28 @@
           </div>
           <label><span id="volumeArgsLabel">编码参数</span><input id="volumeArgs" type="text" value="-vn -c:a libmp3lame -b:a 192k"></label>
           <button class="btn primary run-btn" type="button" data-action="volume">应用增益</button>
+        </div>
+
+        <div class="tool-panel" id="panel-speed">
+          <div class="form-grid">
+            <label><span id="speedLabel">速度倍率</span><input id="speedInput" type="number" min="0.1" max="16" step="0.01" value="1"></label>
+            <label><span id="speedFormatLabel">输出格式</span><select id="speedFormat"><option value="mp3">MP3</option><option value="m4a">M4A</option><option value="ogg">OGG</option><option value="wav">WAV</option><option value="flac">FLAC</option><option value="opus">OPUS</option></select></label>
+          </div>
+          <div class="speed-presets" id="speedPresets" aria-label="速度快捷选项">
+            <button class="btn" type="button" data-speed="0.5">0.5x</button>
+            <button class="btn" type="button" data-speed="0.75">0.75x</button>
+            <button class="btn" type="button" data-speed="1">1.0x</button>
+            <button class="btn" type="button" data-speed="1.25">1.25x</button>
+            <button class="btn" type="button" data-speed="1.5">1.5x</button>
+            <button class="btn" type="button" data-speed="2">2.0x</button>
+            <button class="btn" type="button" data-speed="4">4.0x</button>
+          </div>
+          <label class="switch-row"><input id="keepPitchInput" type="checkbox" checked><span id="keepPitchLabel">保持音高不变</span></label>
+          <label><span id="speedArgsLabel">编码参数</span><input id="speedArgs" type="text" value="-vn -c:a libmp3lame -b:a 192k"></label>
+          <div class="preview-actions" style="margin-top:14px">
+            <button class="btn" id="applyPreviewSpeed" type="button">应用到预览</button>
+            <button class="btn primary run-btn" type="button" data-action="speed">调整速度</button>
+          </div>
         </div>
 
         <div class="status-line" id="statusLine">等待输入文件</div>
