@@ -31,6 +31,22 @@
     rotation: number;
   };
 
+  type SortKind = "images" | "pages";
+
+  type SortSession = {
+    kind: SortKind;
+    pointerId: number;
+    item: HTMLElement;
+    handle: HTMLElement;
+    container: HTMLElement;
+    ghost: HTMLElement;
+    originalOrder: string[];
+    offsetX: number;
+    offsetY: number;
+    lastX: number;
+    lastY: number;
+  };
+
   const LANGUAGE_STORAGE_KEY = "web-tools-language";
   const THEME_STORAGE_KEY = "web-tools-theme";
   const LEGACY_LANGUAGE_STORAGE_KEY = "web-tool-language";
@@ -115,6 +131,9 @@
       size: "大小",
       remove: "删除",
       rotate: "旋转",
+      sortHandle: "拖动调整顺序；也可使用方向键移动",
+      dropHere: "放置到这里",
+      movedToPosition: "已移动到第 {position} 位",
       metadataEmpty: "未读取到元数据。",
       titleMeta: "标题",
       authorMeta: "作者",
@@ -197,6 +216,9 @@
       size: "Size",
       remove: "Remove",
       rotate: "Rotate",
+      sortHandle: "Drag to reorder; arrow keys also move this item",
+      dropHere: "Drop here",
+      movedToPosition: "Moved to position {position}",
       metadataEmpty: "No metadata found.",
       titleMeta: "Title",
       authorMeta: "Author",
@@ -220,8 +242,7 @@
   let managedPages: ManagedPage[] = [];
   let watermarkPdf: PdfEntry | null = null;
   let metadataPdf: PdfEntry | null = null;
-  let draggedImageId = "";
-  let draggedPageId = "";
+  let sortSession: SortSession | null = null;
   let activePreviewUrl = "";
   let pdfLibPromise: Promise<any> | null = null;
   let pdfLibReady = false;
@@ -551,6 +572,264 @@
     return item;
   }
 
+  function getSortableItems(container: HTMLElement): HTMLElement[] {
+    return Array.from(container.children).filter((child) => {
+      return child instanceof HTMLElement && Boolean(child.dataset.sortId);
+    }) as HTMLElement[];
+  }
+
+  function createSortHandle(kind: SortKind, id: string, item: HTMLElement) {
+    const handle = document.createElement("button");
+    handle.className = "sort-handle";
+    handle.type = "button";
+    handle.draggable = false;
+    handle.setAttribute("aria-label", t("sortHandle"));
+    handle.title = t("sortHandle");
+    handle.addEventListener("pointerdown", (event) => beginSort(event, kind, id, item, handle));
+    handle.addEventListener("keydown", (event) => moveSortItemWithKeyboard(event, kind, id, handle));
+    return handle;
+  }
+
+  function animateSortReflow(container: HTMLElement, mutate: () => void) {
+    const items = getSortableItems(container);
+    const positions = new Map<HTMLElement, DOMRect>();
+    items.forEach((item) => positions.set(item, item.getBoundingClientRect()));
+    mutate();
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    items.forEach((item) => {
+      const before = positions.get(item);
+      const after = item.getBoundingClientRect();
+      if (!before) return;
+      const deltaX = before.left - after.left;
+      const deltaY = before.top - after.top;
+      if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) return;
+      item.animate(
+        [
+          { transform: "translate(" + deltaX + "px, " + deltaY + "px)" },
+          { transform: "translate(0, 0)" }
+        ],
+        { duration: 190, easing: "cubic-bezier(.22, 1, .36, 1)" }
+      );
+    });
+  }
+
+  function syncSortOrder(kind: SortKind, container: HTMLElement) {
+    const ids = getSortableItems(container).map((item) => item.dataset.sortId || "");
+    if (kind === "pages") {
+      const byId = new Map(managedPages.map((page) => [page.id, page]));
+      managedPages = ids.map((id) => byId.get(id)).filter((page): page is ManagedPage => Boolean(page));
+    } else {
+      const byId = new Map(images.map((image) => [image.id, image]));
+      images = ids.map((id) => byId.get(id)).filter((image): image is ImageEntry => Boolean(image));
+    }
+  }
+
+  function restoreSortOrder(container: HTMLElement, ids: string[]) {
+    const byId = new Map(getSortableItems(container).map((item) => [item.dataset.sortId || "", item]));
+    ids.forEach((id) => {
+      const item = byId.get(id);
+      if (item) container.appendChild(item);
+    });
+  }
+
+  function updatePageOrderBadges() {
+    getSortableItems($("#pageGrid") as HTMLElement).forEach((card, index) => {
+      const fallback = card.querySelector(".thumb-fallback") as HTMLElement | null;
+      if (fallback) fallback.textContent = String(index + 1);
+    });
+  }
+
+  function announceSortPosition(item: HTMLElement, container: HTMLElement) {
+    const position = getSortableItems(container).indexOf(item) + 1;
+    if (position <= 0) return;
+    const status = $("#sortStatus") as HTMLElement;
+    status.textContent = t("movedToPosition").replace("{position}", String(position));
+  }
+
+  function createSortGhost(item: HTMLElement) {
+    const bounds = item.getBoundingClientRect();
+    const ghost = item.cloneNode(true) as HTMLElement;
+    ghost.classList.remove("sort-placeholder");
+    ghost.classList.add("sort-ghost");
+    ghost.removeAttribute("data-sort-id");
+    ghost.removeAttribute("data-sort-kind");
+    ghost.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
+    ghost.querySelectorAll("button").forEach((button) => button.setAttribute("tabindex", "-1"));
+    ghost.querySelectorAll("embed").forEach((embed) => embed.remove());
+    ghost.style.width = bounds.width + "px";
+    ghost.style.height = bounds.height + "px";
+    document.body.appendChild(ghost);
+    return { ghost, bounds };
+  }
+
+  function positionSortGhost(session: SortSession, clientX: number, clientY: number) {
+    const width = session.ghost.offsetWidth;
+    const height = session.ghost.offsetHeight;
+    const left = Math.max(8, Math.min(window.innerWidth - width - 8, clientX - session.offsetX));
+    const top = Math.max(8, Math.min(window.innerHeight - height - 8, clientY - session.offsetY));
+    session.ghost.style.left = left + "px";
+    session.ghost.style.top = top + "px";
+  }
+
+  function beginSort(event: PointerEvent, kind: SortKind, id: string, item: HTMLElement, handle: HTMLElement) {
+    if (!event.isPrimary || (event.pointerType === "mouse" && event.button !== 0)) return;
+    if (sortSession) finishSort(true);
+    event.preventDefault();
+    const container = item.parentElement as HTMLElement | null;
+    if (!container) return;
+    const { ghost, bounds } = createSortGhost(item);
+    sortSession = {
+      kind,
+      pointerId: event.pointerId,
+      item,
+      handle,
+      container,
+      ghost,
+      originalOrder: getSortableItems(container).map((entry) => entry.dataset.sortId || ""),
+      offsetX: event.clientX - bounds.left,
+      offsetY: event.clientY - bounds.top,
+      lastX: event.clientX,
+      lastY: event.clientY
+    };
+    item.dataset.dropLabel = t("dropHere");
+    item.classList.add("sort-placeholder");
+    container.classList.add("sortable-container", "is-sorting");
+    document.documentElement.classList.add("is-sorting");
+    try {
+      handle.setPointerCapture(event.pointerId);
+    } catch (error) {
+      // Pointer capture is optional; document-level listeners still keep sorting active.
+    }
+    positionSortGhost(sortSession, event.clientX, event.clientY);
+  }
+
+  function gridColumnCount(container: HTMLElement) {
+    const template = window.getComputedStyle(container).gridTemplateColumns.trim();
+    if (!template || template === "none") return 1;
+    return template.split(/\s+/).length;
+  }
+
+  function findSortTarget(session: SortSession, clientX: number, clientY: number) {
+    const containerBounds = session.container.getBoundingClientRect();
+    const margin = 24;
+    if (
+      clientX < containerBounds.left - margin ||
+      clientX > containerBounds.right + margin ||
+      clientY < containerBounds.top - margin ||
+      clientY > containerBounds.bottom + margin
+    ) {
+      return null;
+    }
+    const hit = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
+    const direct = hit?.closest("[data-sort-id]") as HTMLElement | null;
+    if (direct && direct.parentElement === session.container) {
+      return direct === session.item ? null : direct;
+    }
+    let nearest: HTMLElement | null = null;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    getSortableItems(session.container).forEach((candidate) => {
+      if (candidate === session.item) return;
+      const bounds = candidate.getBoundingClientRect();
+      const deltaX = clientX - (bounds.left + bounds.width / 2);
+      const deltaY = clientY - (bounds.top + bounds.height / 2);
+      const distance = deltaX * deltaX + deltaY * deltaY;
+      if (distance < nearestDistance) {
+        nearest = candidate;
+        nearestDistance = distance;
+      }
+    });
+    return nearest;
+  }
+
+  function moveSortPlaceholder(session: SortSession, clientX: number, clientY: number) {
+    const target = findSortTarget(session, clientX, clientY);
+    if (!target) return;
+    const bounds = target.getBoundingClientRect();
+    const after = gridColumnCount(session.container) > 1
+      ? clientX > bounds.left + bounds.width / 2
+      : clientY > bounds.top + bounds.height / 2;
+    const reference = after ? target.nextElementSibling : target;
+    if (reference === session.item || reference === session.item.nextElementSibling) return;
+    animateSortReflow(session.container, () => {
+      session.container.insertBefore(session.item, reference);
+    });
+    if (session.kind === "pages") updatePageOrderBadges();
+    announceSortPosition(session.item, session.container);
+  }
+
+  function autoScrollForSort(clientY: number) {
+    const edge = Math.min(84, window.innerHeight * .14);
+    let distance = 0;
+    if (clientY < edge) distance = -Math.ceil((edge - clientY) / 5);
+    else if (clientY > window.innerHeight - edge) distance = Math.ceil((clientY - window.innerHeight + edge) / 5);
+    if (distance) window.scrollBy(0, Math.max(-18, Math.min(18, distance)));
+  }
+
+  function handleSortPointerMove(event: PointerEvent) {
+    const session = sortSession;
+    if (!session || event.pointerId !== session.pointerId) return;
+    event.preventDefault();
+    session.lastX = event.clientX;
+    session.lastY = event.clientY;
+    positionSortGhost(session, event.clientX, event.clientY);
+    autoScrollForSort(event.clientY);
+    moveSortPlaceholder(session, event.clientX, event.clientY);
+  }
+
+  function finishSort(cancelled: boolean) {
+    const session = sortSession;
+    if (!session) return;
+    sortSession = null;
+    if (cancelled) {
+      animateSortReflow(session.container, () => restoreSortOrder(session.container, session.originalOrder));
+    } else {
+      syncSortOrder(session.kind, session.container);
+    }
+    session.item.classList.remove("sort-placeholder");
+    delete session.item.dataset.dropLabel;
+    session.container.classList.remove("is-sorting");
+    document.documentElement.classList.remove("is-sorting");
+    session.ghost.remove();
+    try {
+      if (session.handle.hasPointerCapture(session.pointerId)) session.handle.releasePointerCapture(session.pointerId);
+    } catch (error) {
+      // The pointer may already have been released by the browser.
+    }
+    if (session.kind === "pages") updatePageOrderBadges();
+    if (!cancelled) announceSortPosition(session.item, session.container);
+  }
+
+  function handleSortPointerEnd(event: PointerEvent) {
+    if (!sortSession || event.pointerId !== sortSession.pointerId) return;
+    event.preventDefault();
+    finishSort(event.type === "pointercancel");
+  }
+
+  function moveSortItemWithKeyboard(event: KeyboardEvent, kind: SortKind, id: string, handle: HTMLElement) {
+    const container = (kind === "pages" ? $("#pageGrid") : $("#imageList")) as HTMLElement;
+    const items = getSortableItems(container);
+    const item = items.find((entry) => entry.dataset.sortId === id);
+    if (!item) return;
+    const currentIndex = items.indexOf(item);
+    const columns = gridColumnCount(container);
+    let offset = 0;
+    if (event.key === "ArrowLeft") offset = -1;
+    else if (event.key === "ArrowRight") offset = 1;
+    else if (event.key === "ArrowUp") offset = -columns;
+    else if (event.key === "ArrowDown") offset = columns;
+    else return;
+    const targetIndex = Math.max(0, Math.min(items.length - 1, currentIndex + offset));
+    if (targetIndex === currentIndex) return;
+    event.preventDefault();
+    const target = items[targetIndex];
+    const reference = targetIndex > currentIndex ? target.nextElementSibling : target;
+    animateSortReflow(container, () => container.insertBefore(item, reference));
+    syncSortOrder(kind, container);
+    if (kind === "pages") updatePageOrderBadges();
+    announceSortPosition(item, container);
+    handle.focus();
+  }
+
   function renderImages() {
     const list = $("#imageList");
     list.innerHTML = "";
@@ -560,19 +839,10 @@
         images = images.filter((entry) => entry.id !== image.id);
         renderImages();
       });
-      item.draggable = true;
-      item.addEventListener("dragstart", () => { draggedImageId = image.id; });
-      item.addEventListener("dragover", (event) => event.preventDefault());
-      item.addEventListener("drop", (event) => {
-        event.preventDefault();
-        const from = images.findIndex((entry) => entry.id === draggedImageId);
-        const to = images.findIndex((entry) => entry.id === image.id);
-        if (from >= 0 && to >= 0 && from !== to) {
-          const [moved] = images.splice(from, 1);
-          images.splice(to, 0, moved);
-          renderImages();
-        }
-      });
+      item.classList.add("sortable");
+      item.dataset.sortId = image.id;
+      item.dataset.sortKind = "images";
+      item.insertBefore(createSortHandle("images", image.id, item), item.firstChild);
       list.appendChild(item);
     });
   }
@@ -655,10 +925,12 @@
   function createPageCard(page: ManagedPage) {
     const card = document.createElement("div");
     card.className = "page-card";
-    card.draggable = true;
     card.dataset.pageId = page.id;
+    card.dataset.sortId = page.id;
+    card.dataset.sortKind = "pages";
     card.innerHTML =
       '<button class="thumb" type="button"></button><div class="file-name"></div><div class="muted"></div><div class="page-actions"></div>';
+    card.insertBefore(createSortHandle("pages", page.id, card), card.firstChild);
     const thumb = card.querySelector(".thumb") as HTMLElement;
     const fallback = document.createElement("span");
     fallback.className = "thumb-fallback";
@@ -668,6 +940,7 @@
     const rotate = document.createElement("button");
     rotate.className = "btn";
     rotate.type = "button";
+    rotate.dataset.pageAction = "rotate";
     rotate.textContent = t("rotate");
     rotate.addEventListener("click", () => {
       page.rotation = (page.rotation + 90) % 360;
@@ -676,6 +949,7 @@
     const remove = document.createElement("button");
     remove.className = "btn";
     remove.type = "button";
+    remove.dataset.pageAction = "remove";
     remove.textContent = t("remove");
     remove.addEventListener("click", () => {
       managedPages = managedPages.filter((entry) => entry.id !== page.id);
@@ -683,29 +957,17 @@
       renderManagedPages();
     });
     actions.append(rotate, remove);
-    card.addEventListener("dragstart", () => { draggedPageId = page.id; });
-    card.addEventListener("dragover", (event) => {
-      event.preventDefault();
-      card.classList.add("drag-over");
-    });
-    card.addEventListener("dragleave", () => card.classList.remove("drag-over"));
-    card.addEventListener("drop", (event) => {
-      event.preventDefault();
-      card.classList.remove("drag-over");
-      const from = managedPages.findIndex((entry) => entry.id === draggedPageId);
-      const to = managedPages.findIndex((entry) => entry.id === page.id);
-      if (from >= 0 && to >= 0 && from !== to) {
-        const [moved] = managedPages.splice(from, 1);
-        managedPages.splice(to, 0, moved);
-        renderManagedPages();
-      }
-    });
     return card;
   }
 
   function updatePageCard(card: HTMLElement, page: ManagedPage, visibleIndex: number) {
     card.querySelector(".file-name")!.textContent = page.sourceName;
     card.querySelector(".muted")!.textContent = "p." + (page.pageIndex + 1) + "/" + page.pageCount + " · " + page.rotation + "°";
+    const handle = card.querySelector(".sort-handle") as HTMLElement;
+    handle.setAttribute("aria-label", t("sortHandle"));
+    handle.title = t("sortHandle");
+    (card.querySelector('[data-page-action="rotate"]') as HTMLButtonElement).textContent = t("rotate");
+    (card.querySelector('[data-page-action="remove"]') as HTMLButtonElement).textContent = t("remove");
     updatePagePreview(card, page, visibleIndex);
   }
 
@@ -996,7 +1258,15 @@
   $("#pagePreviewModal").addEventListener("click", (event) => {
     if (event.target === $("#pagePreviewModal")) closePagePreview();
   });
+  document.addEventListener("pointermove", handleSortPointerMove, { passive: false });
+  document.addEventListener("pointerup", handleSortPointerEnd, { passive: false });
+  document.addEventListener("pointercancel", handleSortPointerEnd, { passive: false });
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && sortSession) {
+      event.preventDefault();
+      finishSort(true);
+      return;
+    }
     if (event.key === "Escape" && !($("#pagePreviewModal") as HTMLElement).hidden) closePagePreview();
   });
 
