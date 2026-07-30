@@ -399,6 +399,36 @@
       margin-bottom: 14px;
     }
 
+    .speed-presets {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .speed-presets button {
+      min-height: 32px;
+      padding: 6px 10px;
+    }
+
+    .switch-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .switch-row input {
+      width: 18px;
+      min-height: 18px;
+      padding: 0;
+      accent-color: var(--blue);
+    }
+
     label {
       display: grid;
       gap: 6px;
@@ -697,7 +727,7 @@
     <section class="hero">
       <div>
         <h1 id="pageTitle">视频处理</h1>
-        <p class="lead" id="pageLead">使用本地 FFmpeg.wasm 资源进行音频提取、拼接、转封装、GIF 生成和元数据读取。</p>
+        <p class="lead" id="pageLead">使用本地 FFmpeg.wasm 资源进行音频提取、拼接、转封装、变速、GIF 生成和元数据读取。</p>
       </div>
       <div class="engine">
         <strong id="engineTitle">FFmpeg Core</strong>
@@ -712,6 +742,7 @@
       <button type="button" data-tool="remux">转封装</button>
       <button type="button" data-tool="clip">截取片段</button>
       <button type="button" data-tool="concat">拼接</button>
+      <button type="button" data-tool="speed">速度调整</button>
       <button type="button" data-tool="gif">GIF 生成</button>
     </div>
 
@@ -819,6 +850,42 @@
         <div class="tool-panel" id="panel-concat">
           <p class="status-line" id="concatHelp">使用 concat demuxer 进行无重编码拼接。文件编码参数不一致时可能失败。</p>
           <button class="btn primary run-btn" type="button" data-action="concat">拼接视频</button>
+        </div>
+
+        <div class="tool-panel" id="panel-speed">
+          <div class="form-grid">
+            <label>
+              <span id="speedLabel">速度倍率</span>
+              <input id="speedInput" type="number" min="0.1" max="16" step="0.01" value="1">
+            </label>
+            <label>
+              <span id="speedFormatLabel">输出容器</span>
+              <select id="speedFormat">
+                <option value="mp4">MP4</option>
+                <option value="mkv">MKV</option>
+                <option value="webm">WebM</option>
+                <option value="mov">MOV</option>
+              </select>
+            </label>
+          </div>
+          <div class="speed-presets" id="speedPresets" aria-label="速度快捷选项">
+            <button class="btn" type="button" data-speed="0.5">0.5x</button>
+            <button class="btn" type="button" data-speed="0.75">0.75x</button>
+            <button class="btn" type="button" data-speed="1">1.0x</button>
+            <button class="btn" type="button" data-speed="1.25">1.25x</button>
+            <button class="btn" type="button" data-speed="1.5">1.5x</button>
+            <button class="btn" type="button" data-speed="2">2.0x</button>
+            <button class="btn" type="button" data-speed="4">4.0x</button>
+          </div>
+          <label class="switch-row"><input id="keepPitchInput" type="checkbox" checked><span id="keepPitchLabel">保持音高不变</span></label>
+          <label>
+            <span id="speedArgsLabel">编码参数</span>
+            <input id="speedArgs" type="text" value="-c:v libx264 -preset veryfast -crf 23 -c:a aac -b:a 160k">
+          </label>
+          <div class="preview-actions" style="margin-top:14px">
+            <button class="btn" id="applyPreviewSpeed" type="button">应用到预览</button>
+            <button class="btn primary run-btn" type="button" data-action="speed">调整速度</button>
+          </div>
         </div>
 
         <div class="tool-panel" id="panel-gif">

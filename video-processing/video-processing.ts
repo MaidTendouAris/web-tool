@@ -19,7 +19,7 @@
       home: "工具集",
       navLabel: "页面导航",
       themeToggle: "切换主题",
-      lead: "使用本地 FFmpeg.wasm 资源进行音频提取、拼接、转封装、GIF 生成和元数据读取。",
+      lead: "使用本地 FFmpeg.wasm 资源进行音频提取、拼接、转封装、变速、GIF 生成和元数据读取。",
       engineTitle: "FFmpeg Core",
       engineIdle: "尚未加载",
       engineLoading: "正在加载本地 FFmpeg 资源...",
@@ -35,6 +35,7 @@
       remuxTab: "转封装",
       clipTab: "截取片段",
       concatTab: "拼接",
+      speedTab: "速度调整",
       gifTab: "GIF 生成",
       inputTitle: "输入文件",
       settingsTitle: "处理设置",
@@ -66,6 +67,13 @@
       invalidTimeRange: "时间范围超出视频时长，请重新选择。",
       concatHelp: "使用 concat demuxer 进行无重编码拼接。文件编码参数不一致时可能失败。",
       concat: "拼接视频",
+      speed: "调整速度",
+      speedFactor: "速度倍率",
+      speedFormat: "输出容器",
+      speedArgs: "编码参数",
+      keepPitch: "保持音高不变",
+      previewSpeed: "应用到预览",
+      invalidSpeed: "速度倍率必须在 0.10x 到 16.00x 之间。",
       gifTimeline: "GIF 范围",
       gifStart: "开始时间（秒）",
       gifEnd: "结束时间（秒）",
@@ -79,6 +87,7 @@
       done: "处理完成",
       failed: "处理失败",
       needSingle: "请先选择一个音视频文件。",
+      needVideo: "请先选择一个视频文件。",
       needMultiple: "请至少选择两个视频文件。",
       loadingFile: "正在读取文件...",
       writingFile: "正在写入虚拟文件系统...",
@@ -99,7 +108,7 @@
       home: "Tools",
       navLabel: "Page navigation",
       themeToggle: "Toggle theme",
-      lead: "Use local FFmpeg.wasm resources to extract audio, stitch clips, remux containers, generate GIFs, and read metadata.",
+      lead: "Use local FFmpeg.wasm resources to extract audio, stitch clips, remux containers, adjust speed, generate GIFs, and read metadata.",
       engineTitle: "FFmpeg Core",
       engineIdle: "Not loaded",
       engineLoading: "Loading local FFmpeg resources...",
@@ -115,6 +124,7 @@
       remuxTab: "Remux",
       clipTab: "Clip",
       concatTab: "Stitch",
+      speedTab: "Speed",
       gifTab: "GIF",
       inputTitle: "Input Files",
       settingsTitle: "Settings",
@@ -146,6 +156,13 @@
       invalidTimeRange: "The time range is outside the video duration. Choose another range.",
       concatHelp: "Uses the concat demuxer without re-encoding. It may fail if codec settings differ.",
       concat: "Stitch Videos",
+      speed: "Adjust Speed",
+      speedFactor: "Speed",
+      speedFormat: "Output container",
+      speedArgs: "Encoding args",
+      keepPitch: "Keep pitch",
+      previewSpeed: "Apply to Preview",
+      invalidSpeed: "Speed must be between 0.10x and 16.00x.",
       gifTimeline: "GIF range",
       gifStart: "Start time (s)",
       gifEnd: "End time (s)",
@@ -159,6 +176,7 @@
       done: "Done",
       failed: "Failed",
       needSingle: "Choose one audio/video file first.",
+      needVideo: "Choose one video file first.",
       needMultiple: "Choose at least two video files first.",
       loadingFile: "Reading file...",
       writingFile: "Writing to virtual file system...",
@@ -268,6 +286,7 @@
     setText('[data-tool="remux"]', "remuxTab");
     setText('[data-tool="clip"]', "clipTab");
     setText('[data-tool="concat"]', "concatTab");
+    setText('[data-tool="speed"]', "speedTab");
     setText('[data-tool="gif"]', "gifTab");
     setText("#singleUploadTitle", "chooseFile");
     setText("#singleUploadHint", "chooseFileHint");
@@ -283,6 +302,11 @@
     setText("#clipDurationLabel", "clipDuration");
     setText("#clipFormatLabel", "clipFormat");
     setText("#concatHelp", "concatHelp");
+    setText("#speedLabel", "speedFactor");
+    setText("#speedFormatLabel", "speedFormat");
+    setText("#keepPitchLabel", "keepPitch");
+    setText("#speedArgsLabel", "speedArgs");
+    setText("#applyPreviewSpeed", "previewSpeed");
     setText("#gifStartLabel", "gifStart");
     setText("#gifDurationLabel", "gifDuration");
     setText("#gifWidthLabel", "gifWidth");
@@ -292,6 +316,7 @@
     setButtonText('[data-action="remux"]', "remux");
     setButtonText('[data-action="clip"]', "clip");
     setButtonText('[data-action="concat"]', "concat");
+    setButtonText('[data-action="speed"]', "speed");
     setButtonText('[data-action="gif"]', "makeGif");
     setText("#usePreviewStart", "usePreviewStart");
     setText("#usePreviewEnd", "usePreviewEnd");
@@ -364,6 +389,59 @@
 
   function fileName(base, ext) {
     return base.replace(/[^\w.-]+/g, "_").replace(/\.[^.]+$/, "") + "." + ext;
+  }
+
+  function videoEncodeArgs(format) {
+    if (format === "webm") return "-c:v libvpx-vp9 -b:v 0 -crf 34 -c:a libopus -b:a 128k";
+    return "-c:v libx264 -preset veryfast -crf 23 -c:a aac -b:a 160k";
+  }
+
+  function splitArgs(text) {
+    var matches = (text || "").match(/"[^"]*"|'[^']*'|\S+/g) || [];
+    return matches.map(function (part) { return part.replace(/^["']|["']$/g, ""); });
+  }
+
+  function readSpeedFactor() {
+    var speed = Number($("#speedInput").value);
+    if (!Number.isFinite(speed)) speed = 1;
+    speed = Math.round(speed * 100) / 100;
+    speed = Math.min(16, Math.max(0.1, speed));
+    $("#speedInput").value = speed.toFixed(2).replace(/\.?0+$/, "");
+    return speed;
+  }
+
+  function formatSpeed(speed) {
+    return speed.toFixed(2).replace(/\.?0+$/, "") + "x";
+  }
+
+  function cleanFilterNumber(value) {
+    return value.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
+  }
+
+  function buildAtempoFilter(speed) {
+    var remaining = speed;
+    var parts = [];
+    while (remaining < 0.5) {
+      parts.push(0.5);
+      remaining /= 0.5;
+    }
+    while (remaining > 2) {
+      parts.push(2);
+      remaining /= 2;
+    }
+    parts.push(remaining);
+    return parts.map(function (part) { return "atempo=" + cleanFilterNumber(part); }).join(",");
+  }
+
+  function buildAudioSpeedFilter(speed, keepPitch) {
+    if (keepPitch) return buildAtempoFilter(speed);
+    return "asetrate=" + Math.max(1, Math.round(44100 * speed)) + ",aresample=44100";
+  }
+
+  function applyPreviewSpeed() {
+    var speed = readSpeedFactor();
+    $("#videoPreview").playbackRate = speed;
+    $("#videoPreview").defaultPlaybackRate = speed;
   }
 
   function setStatus(key) {
@@ -551,7 +629,7 @@
   function updateVideoPreview() {
     var box = $("#videoPreviewBox");
     var video = $("#videoPreview");
-    var shouldShow = !!singleFile && (currentTool === "clip" || currentTool === "gif") && String(singleFile.type || "").indexOf("video/") === 0;
+    var shouldShow = !!singleFile && (currentTool === "clip" || currentTool === "gif" || currentTool === "speed") && String(singleFile.type || "").indexOf("video/") === 0;
     box.classList.toggle("show", shouldShow);
     clearPreviewStopTimer();
     if (!shouldShow) {
@@ -975,6 +1053,34 @@
     safeUnlink(core, outputName);
   }
 
+  async function handleSpeed() {
+    var prepared = await prepareSingleInput();
+    if (String(prepared.file.type || "").indexOf("video/") !== 0 && !/\.(mp4|webm|mov|mkv|avi|m4v)$/i.test(prepared.file.name)) throw new Error(t("needVideo"));
+    var format = $("#speedFormat").value;
+    var speed = readSpeedFactor();
+    var keepPitch = Boolean($("#keepPitchInput").checked);
+    var outputName = fileName(prepared.file.name, "speed-" + formatSpeed(speed).replace("x", "") + "." + format);
+    var videoFilter = "setpts=PTS/" + cleanFilterNumber(speed);
+    var audioFilter = buildAudioSpeedFilter(speed, keepPitch);
+    var hasAudio = true;
+    try {
+      var probe = JSON.parse(await runFFprobe(["-v", "quiet", "-print_format", "json", "-show_streams", prepared.inputName]));
+      hasAudio = Boolean((probe.streams || []).some(function (stream) { return stream.codec_type === "audio"; }));
+    } catch (_error) {}
+    var args = [
+      "-i", prepared.inputName,
+      "-map", "0:v:0",
+      "-vf", videoFilter
+    ];
+    if (hasAudio) args = args.concat(["-map", "0:a?", "-af", audioFilter]);
+    args = args.concat(splitArgs($("#speedArgs").value), [outputName]);
+    var core = await runFFmpeg(args);
+    showDownload(readOutputBlob(core, outputName, format), outputName);
+    showSummary([{ label: t("format"), value: format.toUpperCase() }, { label: t("speedFactor"), value: formatSpeed(speed) }, { label: t("size"), value: formatBytes(core.FS.stat(outputName).size) }]);
+    safeUnlink(core, prepared.inputName);
+    safeUnlink(core, outputName);
+  }
+
   async function handleGif() {
     var prepared = await prepareSingleInput();
     var start = Math.max(0, Number($("#gifStart").value) || 0);
@@ -1004,6 +1110,7 @@
       if (action === "remux") await handleRemux();
       if (action === "clip") await handleClip();
       if (action === "concat") await handleConcat();
+      if (action === "speed") await handleSpeed();
       if (action === "gif") await handleGif();
       setStatus("done");
     } catch (error) {
@@ -1075,6 +1182,10 @@
     updateVideoPreview();
   }
 
+  function syncSpeedDefaultArgs() {
+    $("#speedArgs").value = videoEncodeArgs($("#speedFormat").value);
+  }
+
   setupUpload($("#singleUpload"), $("#singleFileInput"), function (files) {
     singleFile = files.find(function (file) { return file.type.indexOf("video/") === 0 || file.type.indexOf("audio/") === 0; }) || files[0] || null;
     renderFiles();
@@ -1125,6 +1236,15 @@
   $("#gifEnd").addEventListener("change", function () {
     requestGifBounds(Number($("#gifStart").value) || 0, Number($("#gifEnd").value) || 3, "end", true);
   });
+  $("#speedFormat").addEventListener("change", syncSpeedDefaultArgs);
+  $("#speedInput").addEventListener("change", readSpeedFactor);
+  $("#applyPreviewSpeed").addEventListener("click", applyPreviewSpeed);
+  $$("#speedPresets [data-speed]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      $("#speedInput").value = button.dataset.speed;
+      applyPreviewSpeed();
+    });
+  });
   $("#videoPreview").addEventListener("pause", clearPreviewStopTimer);
   $("#videoPreview").addEventListener("loadedmetadata", updateTimelineLimits);
 
@@ -1167,5 +1287,6 @@
 
   applyTheme(resolveInitialTheme());
   applyLanguage(currentLanguage);
+  syncSpeedDefaultArgs();
   setTool("metadata");
 })();
