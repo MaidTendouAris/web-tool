@@ -14,6 +14,7 @@ type LanguagePack = {
   searchLabel: string;
   clearSearch: string;
   themeToggle: string;
+  feedback: string;
   toolListLabel: string;
   open: string;
   passwordTitle: string;
@@ -103,6 +104,7 @@ const LANGUAGE_TABLE: Record<SupportedLanguage, LanguagePack> = {
     searchLabel: "搜索工具",
     clearSearch: "清空搜索",
     themeToggle: "切换主题",
+    feedback: "问题反馈",
     toolListLabel: "工具列表",
     open: "打开",
     passwordTitle: "密码生成器",
@@ -179,6 +181,7 @@ const LANGUAGE_TABLE: Record<SupportedLanguage, LanguagePack> = {
     searchLabel: "Search tools",
     clearSearch: "Clear search",
     themeToggle: "Toggle theme",
+    feedback: "Feedback",
     toolListLabel: "Tool list",
     open: "Open",
     passwordTitle: "Password Generator",
