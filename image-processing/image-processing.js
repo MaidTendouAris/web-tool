@@ -3,6 +3,7 @@
     "use strict";
     var $ = function (selector) { return document.querySelector(selector); };
     var $$ = function (selector) { return Array.from(document.querySelectorAll(selector)); };
+    var sortable = window.WebToolsSortable;
     var LANGUAGE_STORAGE_KEY = "web-tools-language";
     var THEME_STORAGE_KEY = "web-tools-theme";
     var LEGACY_LANGUAGE_STORAGE_KEY = "web-tool-language";
@@ -71,6 +72,9 @@
             imagesUnit: "张",
             moveUp: "上移",
             moveDown: "下移",
+            sortHandle: "拖动调整顺序；也可使用方向键移动",
+            dropHere: "放置到这里",
+            movedToPosition: "已移动到第 {position} 位",
             remove: "移除"
         },
         en: {
@@ -136,6 +140,9 @@
             imagesUnit: "images",
             moveUp: "Move up",
             moveDown: "Move down",
+            sortHandle: "Drag to reorder; arrow keys also move this item",
+            dropHere: "Drop here",
+            movedToPosition: "Moved to position {position}",
             remove: "Remove"
         }
     };
@@ -582,10 +589,11 @@
         images: [],
         canvas: null,
         blob: null,
-        draggedIndex: null,
         previewTimer: 0,
         previewMaxEdge: 1200
     };
+    var stitchSortIds = new WeakMap();
+    var stitchSortCounter = 0;
     function getStitchSettings() {
         return {
             direction: $("#stitchDirection").value,
@@ -620,21 +628,19 @@
         renderStitchList();
         queueStitchPreview();
     }
-    function getStitchIndexFromItem(item) {
-        var value = item && item.dataset ? Number(item.dataset.index) : NaN;
-        return Number.isFinite(value) ? value : -1;
+    function getStitchSortId(item) {
+        var id = stitchSortIds.get(item);
+        if (!id) {
+            stitchSortCounter += 1;
+            id = "stitch-" + stitchSortCounter;
+            stitchSortIds.set(item, id);
+        }
+        return id;
     }
-    function updateStitchDragIndexes() {
-        $$("#stitchList .image-item").forEach(function (item, index) {
-            item.dataset.index = String(index);
-        });
-    }
-    function finishStitchDrag() {
-        stitch.draggedIndex = null;
-        $("#stitchList").classList.remove("drag-sorting");
-        $$("#stitchList .image-item").forEach(function (item) {
-            item.classList.remove("dragging", "drag-over");
-        });
+    function syncStitchOrder(ids) {
+        var byId = new Map(stitch.images.map(function (item) { return [getStitchSortId(item), item]; }));
+        stitch.images = ids.map(function (id) { return byId.get(id); }).filter(Boolean);
+        queueStitchPreview();
     }
     function queueStitchPreview() {
         clearTimeout(stitch.previewTimer);
@@ -645,11 +651,10 @@
         list.innerHTML = "";
         stitch.images.forEach(function (item, index) {
             var li = document.createElement("li");
-            li.className = "image-item";
-            li.dataset.index = String(index);
-            li.draggable = true;
+            var sortId = getStitchSortId(item);
+            li.className = "image-item sortable-item";
+            li.dataset.sortId = sortId;
             li.innerHTML = [
-                '<span class="drag-handle" aria-hidden="true">⋮⋮</span>',
                 '<img class="thumb" src="' + item.dataUrl + '" alt="">',
                 "<div>",
                 '<div class="name">' + escapeHtml(item.file.name) + "</div>",
@@ -661,56 +666,18 @@
                 '<button type="button" data-action="remove" title="' + t("remove") + '">×</button>',
                 "</div>"
             ].join("");
-            li.addEventListener("dragstart", function (event) {
-                stitch.draggedIndex = index;
-                $("#stitchList").classList.add("drag-sorting");
-                li.classList.add("dragging");
-                if (event.dataTransfer) {
-                    event.dataTransfer.effectAllowed = "move";
-                    event.dataTransfer.setData("text/plain", String(index));
-                }
-            });
-            li.addEventListener("dragend", function () {
-                finishStitchDrag();
-                renderStitchList();
-                queueStitchPreview();
-            });
-            li.addEventListener("dragover", function (event) {
-                event.preventDefault();
-                var from = stitch.draggedIndex;
-                var to = getStitchIndexFromItem(li);
-                if (from === null || from === to || from < 0 || to < 0)
-                    return;
-                li.classList.add("drag-over");
-                var item = stitch.images.splice(from, 1)[0];
-                stitch.images.splice(to, 0, item);
-                stitch.draggedIndex = to;
-                var draggedItem = $("#stitchList .image-item.dragging");
-                if (draggedItem) {
-                    if (from < to)
-                        li.after(draggedItem);
-                    else
-                        li.before(draggedItem);
-                    updateStitchDragIndexes();
-                }
-            });
-            li.addEventListener("dragleave", function () {
-                li.classList.remove("drag-over");
-            });
-            li.addEventListener("drop", function (event) {
-                event.preventDefault();
-                finishStitchDrag();
-                renderStitchList();
-                queueStitchPreview();
-            });
+            li.insertBefore(sortable.createHandle(t("sortHandle")), li.firstChild);
             li.querySelector(".mini-actions").addEventListener("click", function (event) {
                 var action = event.target.dataset.action;
+                var currentIndex = stitch.images.findIndex(function (entry) { return getStitchSortId(entry) === sortId; });
+                if (currentIndex < 0)
+                    return;
                 if (action === "up")
-                    moveStitchItem(index, index - 1);
+                    moveStitchItem(currentIndex, currentIndex - 1);
                 if (action === "down")
-                    moveStitchItem(index, index + 1);
+                    moveStitchItem(currentIndex, currentIndex + 1);
                 if (action === "remove") {
-                    stitch.images.splice(index, 1);
+                    stitch.images.splice(currentIndex, 1);
                     renderStitchList();
                     updateStitchPreview();
                 }
@@ -719,7 +686,6 @@
         });
         $("#stitchWorkspace").classList.toggle("hidden", stitch.images.length === 0);
         $("#stitchCount").textContent = stitch.images.length + " / 20 " + t("imagesUnit");
-        updateStitchDragIndexes();
     }
     function makeStitchLayout(maxEdge) {
         var settings = getStitchSettings();
@@ -881,6 +847,16 @@
         $("#stitchDownload").disabled = false;
         $("#stitchMeta").innerHTML = "<span>" + t("output") + " <strong>" + layout.fullW + " x " + layout.fullH + " px</strong></span>";
     }
+    sortable.bind({
+        container: $("#stitchList"),
+        itemSelector: ".image-item",
+        axis: "vertical",
+        getDropLabel: function () { return t("dropHere"); },
+        getMovedLabel: function (position) {
+            return t("movedToPosition").replace("{position}", String(position));
+        },
+        onOrderChange: syncStitchOrder
+    });
     setupUpload($("#stitchUpload"), $("#stitchFiles"), function (files) {
         var slots = 20 - stitch.images.length;
         var selected = files.filter(function (file) { return /^image\//.test(file.type); }).slice(0, slots);

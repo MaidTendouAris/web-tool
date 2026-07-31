@@ -10,21 +10,9 @@ web-tools 是一个只依赖浏览器的本地工具集合。项目没有后端�
 
 https://maidtendouaris.github.io/web-tools/
 
-## 功能
-
-- 带搜索的工具入口，支持中英文界面，默认跟随系统语言，也可手动切换。
-- 亮色和黑色主题，默认跟随系统主题，也可手动切换。
-- 资源管理：将额外运行库导入或下载到浏览器缓存。
-- 密码生成器：在本地生成随机密码和密码短语，支持长度、字符集、排除相似字符、批量生成、强度提示和复制。
-- 图片处理：裁剪、拼接、压缩，支持本地预览和导出。
-- PDF 工具：支持图片转 PDF、PDF 合并拆分、页面排序删除旋转、水印页码页眉页脚，以及元数据查看和清理。
-- 音频处理：支持 MP3/AAC/OGG/M4A 等格式转换、片段裁剪、转封装、元数据编辑、波形预览和音量增益。
-- 数据单位转换：转换常见容量和传输速率单位。
-- 视频处理：读取元数据、提取音频、转封装、截取片段、拼接兼容视频、生成 GIF，并支持预览时间轴。
-
 ## 使用要求
 
-- 现代桌面浏览器。
+- 现代浏览器（建议使用 Chrome、Edge、Firefox 最新版本）。
 - 只有修改源码时才需要 TypeScript。
 - 视频处理需要 FFmpeg.wasm 核心文件：
   - `ffmpeg-core.js`
@@ -32,27 +20,13 @@ https://maidtendouaris.github.io/web-tools/
 - PDF 工具需要 pdf-lib 静态文件：
   - `pdf-lib.min.js`
 
-仓库不包含、也不依赖 `resources` 目录。请在 `index.html` 的"资源管理"区域中导入本地运行文件，或下载到 IndexedDB 浏览器缓存。完成后，工具会自动加载缓存中的运行库。
+请在 `index.html` 的"资源管理"区域中导入本地运行文件，或下载到 IndexedDB 浏览器缓存。完成后，工具会自动加载缓存中的运行库。
 
 ## 本地运行
 
 直接用浏览器打开 `index.html`。
 
 普通使用不需要安装依赖。
-
-## 开发
-
-项目同时提交 TypeScript 源码和编译后的 JavaScript，这样页面可以直接从文件系统运行。
-
-修改 TypeScript 后，请重新编译对应的 JavaScript 文件。命令见 [英文文档的 Development 部分](./README.md#development)。
-
-## 仓库说明
-
-- 本仓库不内置 FFmpeg.wasm 或 pdf-lib 运行文件。
-- 视频处理需要先通过入口页将 `ffmpeg-core.js` 和 `ffmpeg-core.wasm` 放入浏览器缓存。
-- 音频处理需要先通过入口页将 `ffmpeg-core.js` 和 `ffmpeg-core.wasm` 放入浏览器缓存。
-- PDF 工具需要先通过入口页将 `pdf-lib.min.js` 放入浏览器缓存。
-- 当前项目不依赖包管理器、打包器或 Web 服务器。
 
 ## 许可证
 

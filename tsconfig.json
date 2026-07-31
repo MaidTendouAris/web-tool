@@ -10,6 +10,8 @@
     "target": "ES2020"
   },
   "include": [
+    "shared-controls.ts",
+    "shared-sortable.ts",
     "index.ts",
     "audio-processing/**/*.ts",
     "image-to-pdf/**/*.ts",

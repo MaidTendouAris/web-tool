@@ -108,6 +108,9 @@
             files: "文件数",
             previewFile: "当前预览",
             previewSelect: "预览音频",
+            sortHandle: "拖动调整顺序；也可使用方向键移动",
+            dropHere: "放置到这里",
+            movedToPosition: "已移动到第 {position} 位",
             remove: "移除"
         },
         en: {
@@ -198,13 +201,19 @@
             files: "Files",
             previewFile: "Preview",
             previewSelect: "Preview audio",
+            sortHandle: "Drag to reorder; arrow keys also move this item",
+            dropHere: "Drop here",
+            movedToPosition: "Moved to position {position}",
             remove: "Remove"
         }
     };
     var $ = function (selector) { return document.querySelector(selector); };
     var $$ = function (selector) { return Array.from(document.querySelectorAll(selector)); };
+    var sortable = window.WebToolsSortable;
     var currentLanguage = resolveInitialLanguage();
     var selectedFiles = [];
+    var audioSortIds = new WeakMap();
+    var audioSortCounter = 0;
     var currentTool = "convert";
     var singleFile = null;
     var previewUrl = "";
@@ -218,6 +227,32 @@
     var running = false;
     function t(key) {
         return (TEXT[currentLanguage] && TEXT[currentLanguage][key]) || key;
+    }
+    function getAudioSortId(file) {
+        var id = audioSortIds.get(file);
+        if (!id) {
+            audioSortCounter += 1;
+            id = "audio-" + audioSortCounter;
+            audioSortIds.set(file, id);
+        }
+        return id;
+    }
+    function populatePreviewSelector(selector) {
+        selector.innerHTML = "";
+        selectedFiles.forEach(function (file, index) {
+            var option = document.createElement("option");
+            option.value = String(index);
+            option.textContent = String(index + 1) + ". " + file.name;
+            selector.appendChild(option);
+        });
+        selector.value = String(Math.max(0, selectedFiles.indexOf(singleFile)));
+    }
+    function syncSelectedFileOrder(ids) {
+        var byId = new Map(selectedFiles.map(function (file) { return [getAudioSortId(file), file]; }));
+        selectedFiles = ids.map(function (id) { return byId.get(id); }).filter(function (file) { return Boolean(file); });
+        var selector = $("#fileBox .preview-selector select");
+        if (selector)
+            populatePreviewSelector(selector);
     }
     function resolveInitialLanguage() {
         var saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) || localStorage.getItem(LEGACY_LANGUAGE_STORAGE_KEY);
@@ -686,13 +721,7 @@
             selectorLabel.className = "preview-selector";
             selectorLabel.textContent = t("previewSelect");
             var selector = document.createElement("select");
-            selectedFiles.forEach(function (file, index) {
-                var option = document.createElement("option");
-                option.value = String(index);
-                option.textContent = String(index + 1) + ". " + file.name;
-                selector.appendChild(option);
-            });
-            selector.value = String(Math.max(0, selectedFiles.indexOf(singleFile)));
+            populatePreviewSelector(selector);
             selector.addEventListener("change", function () {
                 var nextFile = selectedFiles[Number(selector.value)] || selectedFiles[0] || null;
                 void setPreviewFile(nextFile);
@@ -703,7 +732,8 @@
         selectedFiles.forEach(function (file, index) {
             var card = document.createElement("div");
             var isPreview = file === singleFile;
-            card.className = "file-card" + (isPreview ? " active" : "");
+            card.className = "file-card sortable sortable-item" + (isPreview ? " active" : "");
+            card.dataset.sortId = getAudioSortId(file);
             var info = document.createElement("div");
             var name = document.createElement("div");
             name.className = "file-name";
@@ -724,9 +754,10 @@
             removeButton.addEventListener("click", function (event) {
                 event.stopPropagation();
                 var wasPreview = file === singleFile;
-                selectedFiles = selectedFiles.filter(function (_file, fileIndex) { return fileIndex !== index; });
+                var removalIndex = selectedFiles.indexOf(file);
+                selectedFiles = selectedFiles.filter(function (entry) { return entry !== file; });
                 if (wasPreview) {
-                    void setPreviewFile(selectedFiles[Math.min(index, selectedFiles.length - 1)] || null);
+                    void setPreviewFile(selectedFiles[Math.min(removalIndex, selectedFiles.length - 1)] || null);
                 }
                 else {
                     renderFile();
@@ -734,6 +765,7 @@
                 if (!selectedFiles.length)
                     setStatus("waitingInput");
             });
+            card.appendChild(sortable.createHandle(t("sortHandle")));
             card.appendChild(info);
             card.appendChild(removeButton);
             box.appendChild(card);
@@ -1197,6 +1229,16 @@
     function syncSpeedDefaultArgs() {
         $("#speedArgs").value = audioEncodeArgs($("#speedFormat").value);
     }
+    sortable.bind({
+        container: $("#fileBox"),
+        itemSelector: ".file-card.sortable",
+        axis: "vertical",
+        getDropLabel: function () { return t("dropHere"); },
+        getMovedLabel: function (position) {
+            return t("movedToPosition").replace("{position}", String(position));
+        },
+        onOrderChange: syncSelectedFileOrder
+    });
     setupUpload();
     $$(".tabs button").forEach(function (button) {
         button.addEventListener("click", function () { setTool(button.dataset.tool); });

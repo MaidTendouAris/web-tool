@@ -100,6 +100,9 @@
       streams: "流",
       moveUp: "上移",
       moveDown: "下移",
+      sortHandle: "拖动调整顺序；也可使用方向键移动",
+      dropHere: "放置到这里",
+      movedToPosition: "已移动到第 {position} 位",
       remove: "移除"
     },
     en: {
@@ -189,6 +192,9 @@
       streams: "Streams",
       moveUp: "Move up",
       moveDown: "Move down",
+      sortHandle: "Drag to reorder; arrow keys also move this item",
+      dropHere: "Drop here",
+      movedToPosition: "Moved to position {position}",
       remove: "Remove"
     }
   };
@@ -207,10 +213,13 @@
 
   var $ = function (selector): any { return document.querySelector(selector); };
   var $$ = function (selector): any[] { return Array.from(document.querySelectorAll(selector)) as any[]; };
+  var sortable = (window as any).WebToolsSortable;
   var currentLanguage = resolveInitialLanguage();
   var currentTool = "metadata";
   var singleFile = null;
   var multiFiles = [];
+  var videoSortIds = new WeakMap();
+  var videoSortCounter = 0;
   var previewUrl = "";
   var previewStopTimer = null;
   var lastValidClipStart = 0;
@@ -225,6 +234,21 @@
 
   function t(key) {
     return (TEXT[currentLanguage] && TEXT[currentLanguage][key]) || key;
+  }
+
+  function getVideoSortId(file) {
+    var id = videoSortIds.get(file);
+    if (!id) {
+      videoSortCounter += 1;
+      id = "video-" + videoSortCounter;
+      videoSortIds.set(file, id);
+    }
+    return id;
+  }
+
+  function syncMultiFileOrder(ids) {
+    var byId = new Map(multiFiles.map(function (file) { return [getVideoSortId(file), file]; }));
+    multiFiles = ids.map(function (id) { return byId.get(id); }).filter(Boolean);
   }
 
   function resolveInitialLanguage() {
@@ -1129,7 +1153,9 @@
     $("#fileList").innerHTML = "";
     files.forEach(function (file, index) {
       var li = document.createElement("li");
-      li.className = "file-item";
+      var sortId = currentTool === "concat" ? getVideoSortId(file) : "";
+      li.className = "file-item" + (currentTool === "concat" ? " sortable sortable-item" : "");
+      if (sortId) li.dataset.sortId = sortId;
       li.innerHTML = [
         "<div>",
         '<div class="file-name">' + escapeHtml(file.name) + "</div>",
@@ -1141,18 +1167,25 @@
         '<button type="button" data-action="remove" title="' + t("remove") + '">×</button>',
         "</div>"
       ].join("");
+      if (currentTool === "concat") {
+        li.insertBefore(sortable.createHandle(t("sortHandle")), li.firstChild);
+      }
       li.querySelector(".mini-actions").addEventListener("click", function (event) {
         var action = (event.target as any).dataset.action;
-        if (currentTool === "concat" && action === "up" && index > 0) {
-          var up = multiFiles.splice(index, 1)[0];
-          multiFiles.splice(index - 1, 0, up);
+        var currentIndex = currentTool === "concat"
+          ? multiFiles.findIndex(function (entry) { return getVideoSortId(entry) === sortId; })
+          : index;
+        if (currentIndex < 0) return;
+        if (currentTool === "concat" && action === "up" && currentIndex > 0) {
+          var up = multiFiles.splice(currentIndex, 1)[0];
+          multiFiles.splice(currentIndex - 1, 0, up);
         }
-        if (currentTool === "concat" && action === "down" && index < multiFiles.length - 1) {
-          var down = multiFiles.splice(index, 1)[0];
-          multiFiles.splice(index + 1, 0, down);
+        if (currentTool === "concat" && action === "down" && currentIndex < multiFiles.length - 1) {
+          var down = multiFiles.splice(currentIndex, 1)[0];
+          multiFiles.splice(currentIndex + 1, 0, down);
         }
         if (action === "remove") {
-          if (currentTool === "concat") multiFiles.splice(index, 1);
+          if (currentTool === "concat") multiFiles.splice(currentIndex, 1);
           else singleFile = null;
         }
         renderFiles();
@@ -1185,6 +1218,17 @@
   function syncSpeedDefaultArgs() {
     $("#speedArgs").value = videoEncodeArgs($("#speedFormat").value);
   }
+
+  sortable.bind({
+    container: $("#fileList"),
+    itemSelector: ".file-item.sortable",
+    axis: "vertical",
+    getDropLabel: function () { return t("dropHere"); },
+    getMovedLabel: function (position) {
+      return t("movedToPosition").replace("{position}", String(position));
+    },
+    onOrderChange: syncMultiFileOrder
+  });
 
   setupUpload($("#singleUpload"), $("#singleFileInput"), function (files) {
     singleFile = files.find(function (file) { return file.type.indexOf("video/") === 0 || file.type.indexOf("audio/") === 0; }) || files[0] || null;
