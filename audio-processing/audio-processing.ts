@@ -525,6 +525,14 @@
     return new Blob([zipBuffer], { type: "application/zip" });
   }
 
+  async function showBatchDownload(files: Array<{ name: string; blob: Blob }>, archiveName: string) {
+    if (files.length === 1) {
+      showDownload(files[0].blob, files[0].name);
+      return;
+    }
+    showDownload(await createZip(files), archiveName);
+  }
+
   function splitArgs(text: string) {
     var matches = (text || "").match(/"[^"]*"|'[^']*'|\S+/g) || [];
     return matches.map(function (part) { return part.replace(/^["']|["']$/g, ""); });
@@ -1118,8 +1126,7 @@
       safeUnlink(core, prepared.inputName);
       safeUnlink(core, outputName);
     }
-    var zip = await createZip(zipFiles);
-    showDownload(zip, "converted-audio.zip");
+    await showBatchDownload(zipFiles, "converted-audio.zip");
     showSummary([{ label: t("format"), value: format.toUpperCase() }, { label: t("files"), value: String(zipFiles.length) }, { label: t("size"), value: formatBytes(totalSize) }]);
   }
 
@@ -1156,8 +1163,7 @@
       safeUnlink(core, prepared.inputName);
       safeUnlink(core, outputName);
     }
-    var zip = await createZip(zipFiles);
-    showDownload(zip, "remuxed-audio.zip");
+    await showBatchDownload(zipFiles, "remuxed-audio.zip");
     showSummary([{ label: t("format"), value: format.toUpperCase() }, { label: t("files"), value: String(zipFiles.length) }, { label: t("size"), value: formatBytes(totalSize) }]);
   }
 
@@ -1195,8 +1201,7 @@
       safeUnlink(core, prepared.inputName);
       safeUnlink(core, outputName);
     }
-    var zip = await createZip(zipFiles);
-    showDownload(zip, "speed-adjusted-audio.zip");
+    await showBatchDownload(zipFiles, "speed-adjusted-audio.zip");
     showSummary([{ label: t("format"), value: format.toUpperCase() }, { label: t("files"), value: String(zipFiles.length) }, { label: t("speedFactor"), value: formatSpeed(speed) }, { label: t("size"), value: formatBytes(totalSize) }]);
   }
 

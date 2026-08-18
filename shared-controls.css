@@ -44,11 +44,6 @@
   --ring: rgba(138, 180, 255, .22);
 }
 
-.wt-tool-page.wt-tool-page--compact {
-  --wt-shell-max: 1120px;
-  --wt-shell-wide-max: 1280px;
-}
-
 .wt-tool-page *,
 .wt-tool-page *::before,
 .wt-tool-page *::after {

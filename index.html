@@ -62,7 +62,7 @@
     button, input { font: inherit; }
 
     .shell {
-      width: min(1120px, calc(100% - 32px));
+      width: min(1180px, calc(100% - 32px));
       margin: 0 auto;
       padding: 28px 0 44px;
     }
@@ -609,6 +609,10 @@
       line-height: 1.6;
     }
 
+    @media (min-width: 1440px) {
+      .shell { width: min(1680px, calc(100% - 64px)); }
+    }
+
     @media (max-width: 760px) {
       .shell { width: min(100% - 24px, 1120px); padding-top: 16px; }
       .topbar { justify-content: flex-start; }
@@ -629,7 +633,7 @@
     <div class="topbar">
       <a class="github-link" href="https://github.com/MaidTendouAris/web-tools" target="_blank" rel="noopener noreferrer">GitHub</a>
       <a class="github-link" href="https://github.com/MaidTendouAris/web-tools/issues" target="_blank" rel="noopener noreferrer" data-i18n="feedback">问题反馈</a>
-      <span class="version-badge">V1.2.1</span>
+      <span class="version-badge">V1.2.2</span>
       <div class="language" aria-label="Language">
         <button type="button" data-lang="zh">中文</button>
         <button type="button" data-lang="en">EN</button>
