@@ -23,7 +23,7 @@ const server = http.createServer((req, res) => {
   const browser = await chromium.launch({ channel: process.env.BROWSER_CHANNEL || "msedge", headless: true });
   const errors = [];
   try {
-    const context = await browser.newContext();
+    const context = await browser.newContext({ locale: "zh-CN" });
     context.on("page", page => page.on("pageerror", error => errors.push(error.message)));
     let failWasm = true;
     const hits = { js: 0, wasm: 0, pdf: 0 };
