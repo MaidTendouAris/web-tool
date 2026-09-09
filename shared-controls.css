@@ -1357,3 +1357,51 @@ input[type="color"].wt-color::-moz-color-swatch {
     transition: none;
   }
 }
+
+/* Shared task progress. */
+.wt-progress { margin-top: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--soft); min-width: 0; }
+.wt-progress[hidden], .wt-progress button[hidden] { display: none; }
+.wt-progress-head { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 10px; }
+.wt-progress-track { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.wt-progress-fill { height: 100%; background: var(--blue); border-radius: inherit; transition: width .15s ease; }
+.wt-progress-detail { margin-top: 9px; font-size: 12px; line-height: 1.6; color: var(--muted); overflow-wrap: anywhere; }
+.wt-progress[data-state="done"] .wt-progress-fill { background: var(--green); }
+.wt-progress[data-state="failed"] .wt-progress-fill { background: var(--danger); }
+.wt-progress.is-indeterminate .wt-progress-fill { animation: wt-progress-slide 1.5s ease-in-out infinite alternate; }
+@keyframes wt-progress-slide { from { transform: translateX(0); } to { transform: translateX(233%); } }
+@media (prefers-reduced-motion: reduce) { .wt-progress-fill { transition: none; } .wt-progress.is-indeterminate .wt-progress-fill { animation: none; width: 100% !important; opacity: .5; } }
+
+/* Cache availability is separate from loading a runtime for a task. */
+.wt-tool-page .wt-resource-card {
+  width: 340px; max-width: 100%; min-width: 0; padding: 16px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+  box-shadow: var(--shadow); font-size: 13px;
+}
+.wt-resource-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.wt-resource-head strong { font-size: 14px; }
+.wt-resource-badge { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.wt-resource-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.wt-resource-card[data-state="ready"] .wt-resource-badge { color: var(--green); }
+.wt-resource-card[data-state="missing"] .wt-resource-badge { color: var(--amber); }
+.wt-resource-card[data-state="error"] .wt-resource-badge { color: var(--danger); }
+.wt-resource-card[data-state="downloading"] .wt-resource-badge { color: var(--blue); }
+.wt-resource-summary { color: var(--muted); line-height: 1.6; margin: 9px 0 12px; }
+.wt-resource-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.wt-resource-card .btn { font-size: 12px; padding: 7px 10px; }
+.wt-resource-card progress { display: block; width: 100%; height: 7px; margin-top: 12px; accent-color: var(--blue); }
+.wt-resource-card [hidden] { display: none !important; }
+.wt-resource-message { font-size: 12px; line-height: 1.6; color: var(--danger); overflow-wrap: anywhere; margin: 10px 0 0; }
+.wt-resource-card[data-state="downloading"] .wt-resource-message,
+.wt-resource-card[data-state="importing"] .wt-resource-message { color: var(--muted); }
+.wt-resource-card details { margin-top: 12px; color: var(--muted); }
+.wt-resource-card summary { cursor: pointer; font-size: 12px; }
+.wt-resource-card ul { list-style: none; padding: 0; margin: 10px 0 0; }
+.wt-resource-card li { display: flex; justify-content: space-between; gap: 10px; line-height: 1.8; overflow-wrap: anywhere; }
+.wt-resource-card li span:first-child { min-width: 0; }
+.wt-resource-card li span:last-child { flex-shrink: 0; }
+@media (max-width: 900px) { .wt-tool-page .wt-resource-card { width: 100%; } }
+#resourceManager { scroll-margin-top: 20px; }
+/* Keep number-control tooltips inside the field's right edge. */
+.wt-number-button::after { left: auto; right: 0; transform: translateY(3px); }
+.wt-number-button:hover::after,
+.wt-number-button:focus-visible::after { transform: translateY(0); }

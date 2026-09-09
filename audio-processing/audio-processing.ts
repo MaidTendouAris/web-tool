@@ -1,15 +1,14 @@
 (function () {
   "use strict";
 
+  (window as any).WebToolsResources.createCard(document.getElementById("resourceCard"), ["ffmpeg-core-js", "ffmpeg-core-wasm"]);
+
   type SupportedLanguage = "zh" | "en";
 
   const LANGUAGE_STORAGE_KEY = "web-tools-language";
   const THEME_STORAGE_KEY = "web-tools-theme";
   const LEGACY_LANGUAGE_STORAGE_KEY = "web-tool-language";
   const LEGACY_THEME_STORAGE_KEY = "web-tool-theme";
-  const RESOURCE_CACHE_DB_NAME = "web-tools-resource-cache";
-  const RESOURCE_CACHE_STORE_NAME = "resources";
-  const RESOURCE_CACHE_DB_VERSION = 1;
   const FFMPEG_CORE_JS_RESOURCE_ID = "ffmpeg-core-js";
   const FFMPEG_CORE_WASM_RESOURCE_ID = "ffmpeg-core-wasm";
 
@@ -30,12 +29,8 @@
       home: "工具集",
       themeToggle: "切换主题",
       lead: "使用本地 FFmpeg.wasm 资源进行音频转换、剪切、转封装、元数据编辑、预览、音量和速度处理。",
-      engineIdle: "尚未加载",
-      engineLoading: "正在加载本地 FFmpeg 资源...",
-      engineReady: "已加载，可开始处理",
-      engineLoadButton: "加载本地核心",
-      engineMissing: "未找到 FFmpeg 资源，请先在入口页资源管理中导入或下载。",
-      wasmNeedsCache: "浏览器无法读取 FFmpeg 资源。请回到入口页资源管理，导入或下载 ffmpeg-core.js 与 ffmpeg-core.wasm 到浏览器缓存。",
+      engineMissing: "缺少处理资源，请使用页面顶部的本地资源卡片下载或导入。",
+      wasmNeedsCache: "缺少处理资源，请使用页面顶部的本地资源卡片下载或导入。",
       wasmSelected: "已读取 ffmpeg-core.wasm",
       convertTab: "格式转换",
       cutTab: "裁剪片段",
@@ -46,7 +41,6 @@
       inputTitle: "输入文件",
       uploadTitle: "选择或拖放音频文件",
       uploadHint: "支持 MP3/AAC/OGG/M4A/WAV/FLAC/OPUS 等常见格式。",
-      resourceWarning: "需要先在入口页资源管理中导入或下载 ffmpeg-core.js 和 ffmpeg-core.wasm 到浏览器缓存。进入本页后仍需点击“加载本地核心”或在处理时自动加载。",
       usePreviewStart: "使用当前时间为开始",
       usePreviewEnd: "使用当前时间为结束",
       previewRange: "预览片段范围",
@@ -123,12 +117,8 @@
       home: "Tools",
       themeToggle: "Toggle theme",
       lead: "Use local FFmpeg.wasm resources for audio conversion, trimming, remuxing, metadata editing, preview, gain, and speed processing.",
-      engineIdle: "Not loaded",
-      engineLoading: "Loading local FFmpeg resources...",
-      engineReady: "Loaded and ready",
-      engineLoadButton: "Load Local Core",
-      engineMissing: "FFmpeg resources were not found. Import or download them from Resource Management first.",
-      wasmNeedsCache: "The browser could not read FFmpeg resources. Go back to Resource Management and import or download ffmpeg-core.js and ffmpeg-core.wasm into browser cache.",
+      engineMissing: "Processing resources are missing. Download or import them using Local resources at the top of this page.",
+      wasmNeedsCache: "Processing resources are missing. Download or import them using Local resources at the top of this page.",
       wasmSelected: "ffmpeg-core.wasm loaded",
       convertTab: "Convert",
       cutTab: "Trim",
@@ -139,7 +129,6 @@
       inputTitle: "Input File",
       uploadTitle: "Choose or drop an audio file",
       uploadHint: "Supports common formats such as MP3, AAC, OGG, M4A, WAV, FLAC, and OPUS.",
-      resourceWarning: "Import or download ffmpeg-core.js and ffmpeg-core.wasm into browser cache from Resource Management first. This page still loads the local core before processing.",
       usePreviewStart: "Use Current Time as Start",
       usePreviewEnd: "Use Current Time as End",
       previewRange: "Preview Range",
@@ -227,9 +216,27 @@
   var lastValidEnd = 10;
   var corePromise: Promise<any> | null = null;
   var ffmpegCore: any = null;
-  var localWasmBinary: ArrayBuffer | null = null;
   var logLines: string[] = [];
   var running = false;
+  var cancelled = false;
+  var activeAction = "";
+  var downloadUrl = "";
+  var logTimer = 0;
+  var workerClient: any = null;
+  var progressUI = (window as any).WebToolsControls.createProgress($("#processingProgress"), function () {
+    cancelled = true;
+    if (workerClient) workerClient.terminate();
+  });
+  function checkCancelled() {
+    if (cancelled) throw new DOMException("Cancelled", "AbortError");
+  }
+  function lockInputs(locked: boolean) {
+    $$(".workspace-card-input, .tool-panel, .tabs, .engine-card").forEach(function (element) { element.inert = locked; });
+  }
+  window.addEventListener("pagehide", function () {
+    if (workerClient) workerClient.terminate();
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+  });
 
   function t(key: string): string {
     return (TEXT[currentLanguage] && TEXT[currentLanguage][key]) || key;
@@ -299,7 +306,6 @@
     setText("#homeLink", "home");
     setText("#pageTitle", "title");
     setText("#pageLead", "lead");
-    setText("#loadCoreButton", "engineLoadButton");
     setText('[data-tool="convert"]', "convertTab");
     setText('[data-tool="cut"]', "cutTab");
     setText('[data-tool="remux"]', "remuxTab");
@@ -309,7 +315,6 @@
     setText("#inputTitle", "inputTitle");
     setText("#uploadTitle", "uploadTitle");
     setText("#uploadHint", "uploadHint");
-    setText("#resourceWarning", "resourceWarning");
     setText("#usePreviewStart", "usePreviewStart");
     setText("#usePreviewEnd", "usePreviewEnd");
     setText("#previewRange", "previewRange");
@@ -356,22 +361,21 @@
     $$(".language button[data-lang]").forEach(function (button) {
       button.classList.toggle("active", button.dataset.lang === language);
     });
-    updateEngineStatus();
+
     renderFile();
     if (!$("#resultBox").dataset.hasOutput) $("#resultBox").textContent = t("noOutput");
     if (!singleFile) $("#statusLine").textContent = t("waitingInput");
   }
 
-  function updateEngineStatus() {
-    if (ffmpegCore) $("#engineStatus").textContent = t("engineReady");
-    else if (corePromise) $("#engineStatus").textContent = t("engineLoading");
-    else $("#engineStatus").textContent = t("engineIdle");
-  }
-
   function appendLog(message: string) {
-    logLines.push("[" + new Date().toLocaleTimeString() + "] " + message);
-    $("#logBox").textContent = logLines.join("\n");
-    $("#logBox").scrollTop = $("#logBox").scrollHeight;
+    logLines.push(String(message).slice(0, 4000));
+    if (logLines.length > 300) logLines.splice(0, logLines.length - 300);
+    if (!logTimer) logTimer = window.setTimeout(function () {
+      logTimer = 0;
+      var box = $("#logBox");
+      box.textContent = logLines.join("\n");
+      box.scrollTop = box.scrollHeight;
+    }, 150);
   }
 
   function setStatus(key: string) {
@@ -436,15 +440,6 @@
     return crcTable;
   }
 
-  function crc32(bytes: Uint8Array) {
-    var table = getCrcTable();
-    var crc = 0xffffffff;
-    for (var index = 0; index < bytes.length; index++) {
-      crc = table[(crc ^ bytes[index]) & 0xff] ^ (crc >>> 8);
-    }
-    return (crc ^ 0xffffffff) >>> 0;
-  }
-
   function dosDateTime(date: Date) {
     var time = (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2);
     var day = (date.getFullYear() - 1980) << 9 | ((date.getMonth() + 1) << 5) | date.getDate();
@@ -466,15 +461,28 @@
   async function createZip(files: Array<{ name: string; blob: Blob }>) {
     var encoder = new TextEncoder();
     var now = dosDateTime(new Date());
-    var localParts: Uint8Array[] = [];
-    var centralParts: Uint8Array[] = [];
+    if (files.length > 65535 || files.reduce(function (sum, file) { return sum + file.blob.size + 256 + file.name.length * 8; }, 22) >= 0xffffffff) {
+      throw new Error(currentLanguage === "zh" ? "批量结果超过 ZIP 容量限制，请减少文件数量后重试。" : "Batch exceeds the ZIP size limit. Process fewer files.");
+    }
+    progressUI.stage("exporting");
+    var localParts: BlobPart[] = [];
+    var centralParts: ArrayBuffer[] = [];
     var offset = 0;
     for (var index = 0; index < files.length; index++) {
       var file = files[index];
       var nameBytes = encoder.encode(file.name);
-      var data = new Uint8Array(await file.blob.arrayBuffer());
-      var crc = crc32(data);
-      var local = new Uint8Array(30 + nameBytes.length + data.length);
+      checkCancelled();
+      // Calculate CRC in bounded chunks and yield so cancel/paint stay responsive.
+      var crc = 0xffffffff;
+      var table = getCrcTable();
+      for (var position = 0; position < file.blob.size; position += 1024 * 1024) {
+        var chunk = new Uint8Array(await file.blob.slice(position, position + 1024 * 1024).arrayBuffer());
+        for (var byteIndex = 0; byteIndex < chunk.length; byteIndex++) crc = table[(crc ^ chunk[byteIndex]) & 0xff] ^ (crc >>> 8);
+        await new Promise(function (resolve) { setTimeout(resolve, 0); });
+        checkCancelled();
+      }
+      crc = (crc ^ 0xffffffff) >>> 0;
+      var local = new Uint8Array(30 + nameBytes.length);
       writeUint32(local, 0, 0x04034b50);
       writeUint16(local, 4, 20);
       writeUint16(local, 6, 0x0800);
@@ -482,12 +490,11 @@
       writeUint16(local, 10, now.time);
       writeUint16(local, 12, now.date);
       writeUint32(local, 14, crc);
-      writeUint32(local, 18, data.length);
-      writeUint32(local, 22, data.length);
+      writeUint32(local, 18, file.blob.size);
+      writeUint32(local, 22, file.blob.size);
       writeUint16(local, 26, nameBytes.length);
       local.set(nameBytes, 30);
-      local.set(data, 30 + nameBytes.length);
-      localParts.push(local);
+      localParts.push(local, file.blob);
 
       var central = new Uint8Array(46 + nameBytes.length);
       writeUint32(central, 0, 0x02014b50);
@@ -498,31 +505,23 @@
       writeUint16(central, 12, now.time);
       writeUint16(central, 14, now.date);
       writeUint32(central, 16, crc);
-      writeUint32(central, 20, data.length);
-      writeUint32(central, 24, data.length);
+      writeUint32(central, 20, file.blob.size);
+      writeUint32(central, 24, file.blob.size);
       writeUint16(central, 28, nameBytes.length);
       writeUint32(central, 42, offset);
       central.set(nameBytes, 46);
-      centralParts.push(central);
-      offset += local.length;
+      centralParts.push(central.buffer);
+      offset += local.length + file.blob.size;
     }
-    var centralSize = centralParts.reduce(function (sum, part) { return sum + part.length; }, 0);
+    var centralSize = centralParts.reduce(function (sum, part) { return sum + part.byteLength; }, 0);
     var end = new Uint8Array(22);
     writeUint32(end, 0, 0x06054b50);
     writeUint16(end, 8, files.length);
     writeUint16(end, 10, files.length);
     writeUint32(end, 12, centralSize);
     writeUint32(end, 16, offset);
-    var parts = localParts.concat(centralParts, [end]);
-    var totalLength = parts.reduce(function (sum, part) { return sum + part.length; }, 0);
-    var zipBuffer = new ArrayBuffer(totalLength);
-    var zipBytes = new Uint8Array(zipBuffer);
-    var zipOffset = 0;
-    parts.forEach(function (part) {
-      zipBytes.set(part, zipOffset);
-      zipOffset += part.length;
-    });
-    return new Blob([zipBuffer], { type: "application/zip" });
+    checkCancelled();
+    return new Blob(localParts.concat(centralParts, [end]), { type: "application/zip" });
   }
 
   async function showBatchDownload(files: Array<{ name: string; blob: Blob }>, archiveName: string) {
@@ -606,6 +605,12 @@
   }
 
   function clearRunOutput() {
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+    downloadUrl = "";
+    logLines = [];
+    clearTimeout(logTimer);
+    logTimer = 0;
+    $("#logBox").textContent = "";
     $("#summary").innerHTML = "";
     $("#resultBox").dataset.hasOutput = "";
     $("#resultBox").textContent = t("noOutput");
@@ -723,7 +728,7 @@
     for (var x = 0; x < canvas.width; x++) {
       var min = 1;
       var max = -1;
-      for (var i = 0; i < step; i++) {
+      for (var i = 0; i < step; i += Math.max(1, Math.floor(step / 64))) {
         var sample = data[(x * step) + i] || 0;
         if (sample < min) min = sample;
         if (sample > max) max = sample;
@@ -734,18 +739,45 @@
     ctx.stroke();
   }
 
+  var waveformRequest = 0;
+  var waveformQueue = Promise.resolve();
   async function drawWaveform(file: File) {
-    try {
-      var AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContextClass) throw new Error("No AudioContext");
-      var context = new AudioContextClass();
-      var buffer = await context.decodeAudioData(await file.arrayBuffer());
-      renderWaveform(buffer);
-      if (typeof context.close === "function") context.close();
-    } catch (_error) {
-      renderWaveform(null);
-      appendLog(t("waveformFailed"));
-    }
+    var request = ++waveformRequest;
+    var previous = waveformQueue;
+    waveformQueue = (async function () {
+      await previous;
+      if (request !== waveformRequest || singleFile !== file || running) return;
+      var player = $("#audioPlayer") as HTMLAudioElement;
+      if (!Number.isFinite(player.duration)) {
+        await new Promise<void>(function (resolve) {
+          var timer = window.setTimeout(done, 2000);
+          function done() { clearTimeout(timer); player.removeEventListener("loadedmetadata", done); resolve(); }
+          player.addEventListener("loadedmetadata", done, { once: true });
+        });
+      }
+      if (request !== waveformRequest || singleFile !== file || running) return;
+      if (file.size > 32 * 1024 * 1024 || !Number.isFinite(player.duration) || player.duration > 300) {
+        renderWaveform(null);
+        appendLog(currentLanguage === "zh" ? "已跳过大文件或长音频的波形解码，仍可正常预览和处理。" : "Waveform decoding skipped for large or long audio. Playback and processing remain available.");
+        return;
+      }
+      var context: AudioContext | null = null;
+      try {
+        var AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContextClass) throw new Error("No AudioContext");
+        context = new AudioContextClass();
+        var buffer = await context.decodeAudioData(await file.arrayBuffer());
+        if (request === waveformRequest && singleFile === file && !running) renderWaveform(buffer);
+      } catch (_error) {
+        if (request === waveformRequest && singleFile === file && !running) {
+          renderWaveform(null);
+          appendLog(t("waveformFailed"));
+        }
+      } finally {
+        if (context && context.state !== "closed") await context.close();
+      }
+    })();
+    await waveformQueue;
   }
 
   function renderFile() {
@@ -811,6 +843,7 @@
   }
 
   async function setPreviewFile(file: File | null) {
+    if (running) return;
     singleFile = file;
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     previewUrl = "";
@@ -828,11 +861,13 @@
     $("#playerBox").classList.add("show");
     renderFile();
     setStatus("loadingFile");
+    var previewRequest = waveformRequest + 1;
     await drawWaveform(file);
-    $("#statusLine").textContent = t("done");
+    if (waveformRequest === previewRequest && !running && singleFile === file) $("#statusLine").textContent = t("done");
   }
 
   async function loadFiles(files: FileList | File[]) {
+    if (running) return;
     selectedFiles = Array.from(files);
     await setPreviewFile(selectedFiles[0] || null);
     renderFile();
@@ -858,138 +893,66 @@
     });
   }
 
-  function openResourceCacheDb() {
-    return new Promise<any>(function (resolve, reject) {
-      if (!("indexedDB" in window)) {
-        reject(new Error("IndexedDB unavailable"));
-        return;
-      }
-      var request = indexedDB.open(RESOURCE_CACHE_DB_NAME, RESOURCE_CACHE_DB_VERSION);
-      request.onupgradeneeded = function () {
-        var db = request.result;
-        if (!db.objectStoreNames.contains(RESOURCE_CACHE_STORE_NAME)) {
-          db.createObjectStore(RESOURCE_CACHE_STORE_NAME, { keyPath: "id" });
-        }
-      };
-      request.onsuccess = function () { resolve(request.result); };
-      request.onerror = function () { reject(request.error); };
-    });
-  }
-
-  function getCachedResource(resourceId: string) {
-    return openResourceCacheDb().then(function (db) {
-      return new Promise<any>(function (resolve, reject) {
-        var transaction = db.transaction(RESOURCE_CACHE_STORE_NAME, "readonly");
-        var request = transaction.objectStore(RESOURCE_CACHE_STORE_NAME).get(resourceId);
-        request.onsuccess = function () { resolve(request.result || null); };
-        request.onerror = function () { reject(request.error); };
-        transaction.oncomplete = function () { db.close(); };
-        transaction.onerror = function () {
-          db.close();
-          reject(transaction.error);
-        };
-      });
-    });
-  }
-
-  function loadScript(src: string) {
-    return new Promise<void>(function (resolve, reject) {
-      var existing = document.querySelector('script[data-ffmpeg-core="true"]');
-      if (existing) {
-        resolve();
-        return;
-      }
-      var script = document.createElement("script");
-      script.src = src;
-      script.dataset.ffmpegCore = "true";
-      script.onload = function () { resolve(); };
-      script.onerror = function () { reject(new Error(t("engineMissing"))); };
-      document.head.appendChild(script);
-    });
-  }
-
-  async function loadCachedScript(resourceId: string) {
-    var record: any = await getCachedResource(resourceId);
-    if (!record || !record.content) return false;
-    var blob = new Blob([record.content], { type: record.mimeType || "text/javascript" });
-    var blobUrl = URL.createObjectURL(blob);
-    try {
-      await loadScript(blobUrl);
-      return true;
-    } finally {
-      setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 1000);
-    }
-  }
-
-  async function loadWasmBinary() {
-    if (localWasmBinary) return localWasmBinary;
-    try {
-      var cached: any = await getCachedResource(FFMPEG_CORE_WASM_RESOURCE_ID);
-      if (cached && cached.content) {
-        localWasmBinary = cached.content;
-        appendLog(t("wasmSelected"));
-        updateEngineStatus();
-        return localWasmBinary;
-      }
-    } catch (_cacheError) {}
-    throw new Error(t("wasmNeedsCache"));
+  function getCachedResource(id: string) {
+    return (window as any).WebToolsResources.read(id);
   }
 
   async function getCore() {
+    checkCancelled();
     if (ffmpegCore) return ffmpegCore;
     if (!corePromise) {
+      workerClient = (window as any).WebToolsMediaEngine.create({
+        log: appendLog,
+        progress: function (event: any) { progressUI.update(event.ratio); }
+      });
+      var client = workerClient;
       corePromise = (async function () {
-        updateEngineStatus();
-        var scriptLoadedFromCache = false;
-        try {
-          scriptLoadedFromCache = await loadCachedScript(FFMPEG_CORE_JS_RESOURCE_ID);
-        } catch (_cacheError) {}
-        if (!scriptLoadedFromCache) throw new Error(t("wasmNeedsCache"));
-        var wasmBinary = await loadWasmBinary();
-        var factory = (window as any).createFFmpegCore;
-        if (typeof factory !== "function") throw new Error(t("engineMissing"));
-        var core = await factory({
-          wasmBinary: wasmBinary,
-          logger: function (event) {
-            if (event && event.message) appendLog(event.message);
-          },
-          progress: function (event) {
-            if (event && Number.isFinite(event.progress)) {
-              $("#statusLine").textContent = t("running") + " " + Math.round(event.progress * 100) + "%";
-            }
-          }
-        });
-        ffmpegCore = core;
-        updateEngineStatus();
-        return core;
+        progressUI.stage("loading");
+        var records = await Promise.all([
+          getCachedResource(FFMPEG_CORE_JS_RESOURCE_ID),
+          getCachedResource(FFMPEG_CORE_WASM_RESOURCE_ID)
+        ]);
+        checkCancelled();
+        if (!(window as any).WebToolsResources.available(records[0]) || !(window as any).WebToolsResources.available(records[1])) throw new Error(t("wasmNeedsCache"));
+        await client.load(records[0].content, records[1].content);
+        checkCancelled();
+        ffmpegCore = client;
+        return client;
       })().catch(function (error) {
+        client.terminate();
+        ffmpegCore = null;
         corePromise = null;
-        updateEngineStatus();
+
         throw error;
       });
+
     }
     return corePromise;
   }
 
-  function safeUnlink(core: any, path: string) {
-    try { core.FS.unlink(path); } catch (_error) {}
+  async function safeUnlink(core: any, path: string) {
+    checkCancelled();
+    await core.FS.unlink(path);
   }
 
   async function writeFileToCore(core: any, path: string, file: File) {
+    checkCancelled();
+    progressUI.stage("reading");
     setStatus("loadingFile");
-    var bytes = new Uint8Array(await file.arrayBuffer());
-    setStatus("writingFile");
-    safeUnlink(core, path);
-    core.FS.writeFile(path, bytes);
+    var mode = await core.input(path, file);
+    if (mode === "MEMFS") appendLog("WORKERFS unavailable; using worker memory for input.");
   }
 
-  function readOutputBlob(core: any, path: string, ext: string) {
-    var data = core.FS.readFile(path);
-    return new Blob([data.buffer || data], { type: MIME[ext] || "application/octet-stream" });
+  async function readOutputBlob(core: any, path: string, ext: string) {
+    checkCancelled();
+    progressUI.stage("exporting");
+    return await core.blob(path, MIME[ext] || "application/octet-stream");
   }
 
   function showDownload(blob: Blob, name: string) {
-    var url = URL.createObjectURL(blob);
+    checkCancelled();
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+    var url = downloadUrl = URL.createObjectURL(blob);
     var box = $("#resultBox");
     box.dataset.hasOutput = "true";
     box.innerHTML = "";
@@ -1017,7 +980,7 @@
     var targetFile = file || singleFile;
     if (!targetFile) throw new Error(t("needFile"));
     var core = await getCore();
-    core.reset();
+    await core.reset();
     var inputName = "input." + getExt(targetFile.name);
     await writeFileToCore(core, inputName, targetFile);
     return { core: core, inputName: inputName, file: targetFile };
@@ -1025,27 +988,27 @@
 
   async function runFFmpeg(args: string[]) {
     var core = await getCore();
+    checkCancelled();
     setStatus("running");
+    progressUI.stage("processing");
     appendLog("$ ffmpeg " + args.join(" "));
-    var ret = core.exec.apply(core, args);
-    if (ret !== 0) throw new Error("FFmpeg exited with code " + ret);
+    var scale: number | null = activeAction === "speed" ? readSpeedFactor() : 1;
+    // User timestamp filters can make duration estimates unreliable.
+    var custom = ({
+      convert: ["#encodeArgs", "#convertAdvancedArgs"], cut: ["#cutArgs"],
+      remux: ["#remuxArgs"], volume: ["#volumeArgs"], speed: ["#speedArgs"]
+    })[activeAction] || [];
+    if (custom.some(function (selector) { return /(?:setpts|asetpts|atempo|asetrate|trim|concat|loop|-shortest|-copyts|-t\b|-to\b)/.test($(selector).value); })) scale = null;
+    await core.exec(args, scale);
+    checkCancelled();
     return core;
   }
 
   async function runFFprobe(args: string[]) {
     var core = await getCore();
-    setStatus("running");
+    progressUI.stage("reading");
     appendLog("$ ffprobe " + args.join(" "));
-    var stdout: string[] = [];
-    core.setLogger(function (event) {
-      if (!event || !event.message) return;
-      if (event.type === "stdout") stdout.push(event.message);
-      appendLog(event.message);
-    });
-    var ret = core.ffprobe.apply(core, args);
-    var output = stdout.join("\n").trim();
-    if (ret !== 0 && !output) throw new Error("FFprobe exited with code " + ret);
-    return output;
+    return await core.probe(args);
   }
 
   async function handleReadMetadata() {
@@ -1055,7 +1018,7 @@
     try { parsed = JSON.parse(output); } catch (_error) {}
     if (parsed && parsed.format && parsed.format.tags) fillMetadata(parsed.format.tags);
     showTextOutput(parsed ? JSON.stringify(parsed, null, 2) : output);
-    safeUnlink(prepared.core, prepared.inputName);
+    await safeUnlink(prepared.core, prepared.inputName);
   }
 
   function fillMetadata(tags: Record<string, string>) {
@@ -1102,10 +1065,10 @@
     var outputName = fileName(prepared.file.name, "metadata." + ext);
     var args = ["-i", prepared.inputName, "-map", "0", "-c", "copy"].concat(metadataArgs(), [outputName]);
     var core = await runFFmpeg(args);
-    showDownload(readOutputBlob(core, outputName, ext), outputName);
-    showSummary([{ label: t("format"), value: ext.toUpperCase() }, { label: t("size"), value: formatBytes(core.FS.stat(outputName).size) }]);
-    safeUnlink(core, prepared.inputName);
-    safeUnlink(core, outputName);
+    showDownload(await readOutputBlob(core, outputName, ext), outputName);
+    showSummary([{ label: t("format"), value: ext.toUpperCase() }, { label: t("size"), value: formatBytes((await core.FS.stat(outputName)).size) }]);
+    await safeUnlink(core, prepared.inputName);
+    await safeUnlink(core, outputName);
   }
 
   async function handleConvert() {
@@ -1115,34 +1078,36 @@
     var usedNames: Record<string, boolean> = {};
     var totalSize = 0;
     for (var index = 0; index < selectedFiles.length; index++) {
+      checkCancelled();
+      progressUI.file(selectedFiles[index].name, index + 1);
       var prepared = await prepareInput(selectedFiles[index]);
       var outputName = uniqueName(fileName(prepared.file.name, format), usedNames);
       appendLog("[" + (index + 1) + "/" + selectedFiles.length + "] " + prepared.file.name);
       var args = ["-i", prepared.inputName].concat(splitArgs($("#encodeArgs").value), splitArgs($("#convertAdvancedArgs").value), [outputName]);
       var core = await runFFmpeg(args);
-      var blob = readOutputBlob(core, outputName, format);
+      var blob = await readOutputBlob(core, outputName, format);
       totalSize += blob.size;
       zipFiles.push({ name: outputName, blob: blob });
-      safeUnlink(core, prepared.inputName);
-      safeUnlink(core, outputName);
+      await safeUnlink(core, prepared.inputName);
+      await safeUnlink(core, outputName);
     }
     await showBatchDownload(zipFiles, "converted-audio.zip");
     showSummary([{ label: t("format"), value: format.toUpperCase() }, { label: t("files"), value: String(zipFiles.length) }, { label: t("size"), value: formatBytes(totalSize) }]);
   }
 
   async function handleCut() {
-    var prepared = await prepareInput();
     var start = Number($("#cutStart").value) || 0;
     var end = Number($("#cutEnd").value) || (start + 10);
-    if (!requestCutBounds(start, end, "both", true)) return;
+    if (!requestCutBounds(start, end, "both", true)) throw new Error($("#statusLine").textContent || t("invalidTimeRange"));
+    var prepared = await prepareInput();
     var format = $("#cutFormat").value;
     var outputName = fileName(prepared.file.name, "cut." + format);
     var args = ["-ss", String(start), "-to", String(end), "-i", prepared.inputName].concat(splitArgs($("#cutArgs").value), [outputName]);
     var core = await runFFmpeg(args);
-    showDownload(readOutputBlob(core, outputName, format), outputName);
-    showSummary([{ label: t("format"), value: format.toUpperCase() }, { label: t("duration"), value: formatSeconds(end - start) + "s" }, { label: t("size"), value: formatBytes(core.FS.stat(outputName).size) }]);
-    safeUnlink(core, prepared.inputName);
-    safeUnlink(core, outputName);
+    showDownload(await readOutputBlob(core, outputName, format), outputName);
+    showSummary([{ label: t("format"), value: format.toUpperCase() }, { label: t("duration"), value: formatSeconds(end - start) + "s" }, { label: t("size"), value: formatBytes((await core.FS.stat(outputName)).size) }]);
+    await safeUnlink(core, prepared.inputName);
+    await safeUnlink(core, outputName);
   }
 
   async function handleRemux() {
@@ -1152,16 +1117,18 @@
     var usedNames: Record<string, boolean> = {};
     var totalSize = 0;
     for (var index = 0; index < selectedFiles.length; index++) {
+      checkCancelled();
+      progressUI.file(selectedFiles[index].name, index + 1);
       var prepared = await prepareInput(selectedFiles[index]);
       var outputName = uniqueName(fileName(prepared.file.name, "remux." + format), usedNames);
       appendLog("[" + (index + 1) + "/" + selectedFiles.length + "] " + prepared.file.name);
       var args = ["-i", prepared.inputName].concat(splitArgs($("#remuxArgs").value), [outputName]);
       var core = await runFFmpeg(args);
-      var blob = readOutputBlob(core, outputName, format);
+      var blob = await readOutputBlob(core, outputName, format);
       totalSize += blob.size;
       zipFiles.push({ name: outputName, blob: blob });
-      safeUnlink(core, prepared.inputName);
-      safeUnlink(core, outputName);
+      await safeUnlink(core, prepared.inputName);
+      await safeUnlink(core, outputName);
     }
     await showBatchDownload(zipFiles, "remuxed-audio.zip");
     showSummary([{ label: t("format"), value: format.toUpperCase() }, { label: t("files"), value: String(zipFiles.length) }, { label: t("size"), value: formatBytes(totalSize) }]);
@@ -1174,10 +1141,10 @@
     var outputName = fileName(prepared.file.name, "gain." + format);
     var args = ["-i", prepared.inputName, "-af", "volume=" + gain + "dB"].concat(splitArgs($("#volumeArgs").value), [outputName]);
     var core = await runFFmpeg(args);
-    showDownload(readOutputBlob(core, outputName, format), outputName);
-    showSummary([{ label: t("format"), value: format.toUpperCase() }, { label: t("size"), value: formatBytes(core.FS.stat(outputName).size) }]);
-    safeUnlink(core, prepared.inputName);
-    safeUnlink(core, outputName);
+    showDownload(await readOutputBlob(core, outputName, format), outputName);
+    showSummary([{ label: t("format"), value: format.toUpperCase() }, { label: t("size"), value: formatBytes((await core.FS.stat(outputName)).size) }]);
+    await safeUnlink(core, prepared.inputName);
+    await safeUnlink(core, outputName);
   }
 
   async function handleSpeed() {
@@ -1190,16 +1157,18 @@
     var usedNames: Record<string, boolean> = {};
     var totalSize = 0;
     for (var index = 0; index < selectedFiles.length; index++) {
+      checkCancelled();
+      progressUI.file(selectedFiles[index].name, index + 1);
       var prepared = await prepareInput(selectedFiles[index]);
       var outputName = uniqueName(fileName(prepared.file.name, "speed-" + formatSpeed(speed).replace("x", "") + "." + format), usedNames);
       appendLog("[" + (index + 1) + "/" + selectedFiles.length + "] " + prepared.file.name);
       var args = ["-i", prepared.inputName, "-af", filter].concat(splitArgs($("#speedArgs").value), [outputName]);
       var core = await runFFmpeg(args);
-      var blob = readOutputBlob(core, outputName, format);
+      var blob = await readOutputBlob(core, outputName, format);
       totalSize += blob.size;
       zipFiles.push({ name: outputName, blob: blob });
-      safeUnlink(core, prepared.inputName);
-      safeUnlink(core, outputName);
+      await safeUnlink(core, prepared.inputName);
+      await safeUnlink(core, outputName);
     }
     await showBatchDownload(zipFiles, "speed-adjusted-audio.zip");
     showSummary([{ label: t("format"), value: format.toUpperCase() }, { label: t("files"), value: String(zipFiles.length) }, { label: t("speedFactor"), value: formatSpeed(speed) }, { label: t("size"), value: formatBytes(totalSize) }]);
@@ -1208,6 +1177,13 @@
   async function runAction(action: string) {
     if (running) return;
     running = true;
+    cancelled = false;
+    activeAction = action;
+    lockInputs(true);
+    progressUI.start(["convert", "remux", "speed"].includes(action) ? selectedFiles.length || 1 : 1);
+    progressUI.file(singleFile ? singleFile.name : "", 1);
+    $("#audioPlayer").pause();
+    waveformRequest++;
     $$(".run-btn").forEach(function (button) { button.disabled = true; });
     clearRunOutput();
     setStatus("running");
@@ -1219,19 +1195,35 @@
       if (action === "write-metadata") await handleWriteMetadata();
       if (action === "volume") await handleVolume();
       if (action === "speed") await handleSpeed();
+      checkCancelled();
       setStatus("done");
+      progressUI.finish("done");
     } catch (error) {
+      progressUI.finish(cancelled ? "cancelled" : "failed");
+      if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+      downloadUrl = "";
+      $("#resultBox").textContent = t("noOutput");
+      $("#resultBox").dataset.hasOutput = "";
+      if (cancelled) { $("#statusLine").textContent = currentLanguage === "zh" ? "已取消处理" : "Processing cancelled"; return; }
       setStatus("failed");
       var message = (error && error.message) || String(error);
       appendLog(message);
       $("#resultBox").textContent = message;
     } finally {
+      if (workerClient) workerClient.terminate();
+      workerClient = null;
+      ffmpegCore = null;
+      corePromise = null;
+      cancelled = false;
+
+      lockInputs(false);
       running = false;
       $$(".run-btn").forEach(function (button) { button.disabled = false; });
     }
   }
 
   function setTool(tool: string) {
+    if (running) return;
     currentTool = tool;
     $$(".tabs button").forEach(function (button) {
       button.classList.toggle("active", button.dataset.tool === tool);
@@ -1318,13 +1310,7 @@
   $$(".run-btn").forEach(function (button) {
     button.addEventListener("click", function () { runAction(button.dataset.action); });
   });
-  $("#loadCoreButton").addEventListener("click", async function () {
-    try {
-      await getCore();
-    } catch (error) {
-      alert((error && error.message) || String(error));
-    }
-  });
+
 
   window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener("change", function (event) {
       var saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);

@@ -188,7 +188,7 @@
         <span id="homeText">工具集</span>
       </a>
       <div class="top-actions wt-top-actions">
-        <span class="version-badge">V1.1.1</span>
+        <span class="version-badge">V1.1.2</span>
         <div class="language" aria-label="Language">
           <button type="button" data-lang="zh">中文</button>
           <button type="button" data-lang="en">EN</button>
@@ -204,11 +204,7 @@
         <h1 id="pageTitle">视频处理</h1>
         <p class="lead" id="pageLead">使用本地 FFmpeg.wasm 资源进行音频提取、拼接、转封装、变速、GIF 生成和元数据读取。</p>
       </div>
-      <div class="engine">
-        <strong id="engineTitle">FFmpeg Core</strong>
-        <span id="engineStatus">尚未加载</span>
-        <button class="btn" id="pickResourceDirButton" type="button">加载本地核心</button>
-      </div>
+      <aside id="resourceCard" class="wt-resource-card"></aside>
     </section>
 
     <div class="tabs" role="tablist" aria-label="视频工具">
@@ -244,7 +240,7 @@
           </div>
         </div>
         <ul class="file-list" id="fileList"></ul>
-        <div class="warn" id="resourceWarning"></div>
+
       </div>
 
       <div class="card output-card workspace-card-output">
@@ -410,6 +406,7 @@
         </div>
 
         <div class="status-line" id="statusLine">等待输入文件</div>
+        <div id="processingProgress" hidden></div>
       </div>
 
       <div class="card output-card workspace-card-log">
@@ -422,6 +419,8 @@
 
   <script src="../shared-sortable.js"></script>
   <script src="../shared-controls.js"></script>
+  <script src="../shared-media-engine.js"></script>
+  <script src="../shared-resources.js"></script>
   <script src="./video-processing.js"></script>
 </body>
 </html>

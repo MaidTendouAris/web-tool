@@ -20,13 +20,27 @@ https://maidtendouaris.github.io/web-tools/
 - PDF tools require the pdf-lib static file:
   - `pdf-lib.min.js`
 
-Use the "Resource Management" section on `index.html` to import local runtime files or download them to the IndexedDB browser cache. Once done, the tools will automatically load the cached runtime libraries.
+Download or import runtime files directly from each tool page, or use the homepage resource manager for centralized cache management.
 
 ## Run Locally
 
 Open `index.html` directly in your browser.
 
 No dependency installation is required for normal use.
+
+## Local resources
+
+Audio, video, and PDF pages check cached resources automatically. Their Local resources cards can download missing assets or import local files directly; runtimes load automatically when processing starts. The homepage also has a top navigation shortcut to centralized resource management, including cache removal.
+
+## Media processing and progress
+
+Audio and video share a dedicated FFmpeg Worker and a shared progress component. The UI reports loading, reading, processing, export, and terminal states, with a current-file count for audio batches and a cancel button. Percentages are estimates based on media time, adjusted for speed changes. Unknown durations (including some concatenation or custom timestamp filters) use indeterminate progress. Only a prepared output reaches 100%.
+
+Cores with WORKERFS read input files on demand without copying the whole input into memory. Older cores fall back to an in-worker memory filesystem. The engine is terminated after success, failure, or cancellation; subsequent tasks reload it from the local cache. Outputs still require browser memory, so very large outputs or demanding re-encoding can still fail.
+
+Audio ZIP batches use chunked checksums and Blob composition; single outputs remain direct downloads. Full waveform decoding is skipped for audio over 32 MiB, over five minutes, or with an unknown duration. Browser-supported playback and FFmpeg processing remain available.
+
+See [media regression tests](tests/README.md) for development checks.
 
 ## License
 

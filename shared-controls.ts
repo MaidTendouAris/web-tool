@@ -794,7 +794,68 @@
     }, true);
   }
 
+
+  function createProgress(host: HTMLElement, onCancel: () => void) {
+    host.classList.add("wt-progress");
+    host.hidden = true;
+    host.innerHTML = '<div class="wt-progress-head"><span role="status" aria-live="polite"></span><button type="button" class="btn"></button></div><div class="wt-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100"><div class="wt-progress-fill"></div></div><div class="wt-progress-detail"></div>';
+    var label = host.querySelector('[role="status"]') as HTMLElement;
+    var cancel = host.querySelector("button") as HTMLButtonElement;
+    var track = host.querySelector('[role="progressbar"]') as HTMLElement;
+    var fill = host.querySelector(".wt-progress-fill") as HTMLElement;
+    var detail = host.querySelector(".wt-progress-detail") as HTMLElement;
+    var stage = "loading", file = "", index = 1, count = 1;
+    var ratio: number | null = null;
+    var elapsed = 0, started = 0, timer = 0, active = false;
+    var words = {
+      zh: { loading: "正在加载处理引擎", reading: "正在读取文件", processing: "正在处理", exporting: "正在生成下载文件", done: "处理完成", failed: "处理失败", cancelled: "已取消", cancel: "取消处理", estimate: "预计", unknown: "暂无法确定百分比", elapsed: "已用时", file: "文件" },
+      en: { loading: "Loading engine", reading: "Reading file", processing: "Processing", exporting: "Preparing download", done: "Completed", failed: "Failed", cancelled: "Cancelled", cancel: "Cancel", estimate: "Estimated", unknown: "Percentage unavailable", elapsed: "Elapsed", file: "File" }
+    };
+    function render() {
+      var w = words[document.documentElement.lang.startsWith("zh") ? "zh" : "en"];
+      label.textContent = w[stage];
+      cancel.textContent = w.cancel;
+      cancel.hidden = !active;
+      host.dataset.state = stage;
+      host.classList.toggle("is-indeterminate", ratio === null && active);
+      track.setAttribute("aria-label", w[stage]);
+      if (ratio === null) track.removeAttribute("aria-valuenow");
+      else track.setAttribute("aria-valuenow", String(Math.round(ratio * 100)));
+      fill.style.width = ratio === null ? (active ? "30%" : "0%") : (ratio * 100) + "%";
+      var parts = [w.file + " " + index + "/" + count];
+      if (file) parts.push(file);
+      if (ratio !== null) parts.push((stage === "done" ? "" : w.estimate + " ") + Math.round(ratio * 100) + "%");
+      else if (stage === "processing") parts.push(w.unknown);
+      parts.push(w.elapsed + " " + Math.floor(elapsed / 60) + ":" + String(elapsed % 60).padStart(2, "0"));
+      detail.textContent = parts.join(" · ");
+      track.setAttribute("aria-valuetext", detail.textContent);
+    }
+    cancel.addEventListener("click", onCancel);
+    new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
+    return {
+      start: function (total = 1) {
+        clearInterval(timer);
+        active = true; count = total; index = 1; file = ""; ratio = null; stage = "loading";
+        elapsed = 0; started = Date.now(); host.hidden = false;
+        timer = window.setInterval(function () { elapsed = Math.floor((Date.now() - started) / 1000); render(); }, 1000);
+        render();
+      },
+      file: function (name: string, current: number) { file = name; index = current; ratio = null; render(); },
+      stage: function (next: string) { if (!active) return; stage = next; ratio = null; render(); },
+      update: function (value: number | null) {
+        if (!active || stage !== "processing") return;
+        if (value !== null && Number.isFinite(value)) ratio = Math.max(ratio || 0, Math.min(0.99, Math.max(0, value)));
+        render();
+      },
+      finish: function (state: string) {
+        active = false; stage = state; ratio = state === "done" ? 1 : ratio;
+        clearInterval(timer); render();
+      }
+    };
+  }
+
   global.WebToolsControls = {
+    createProgress: createProgress,
     enhance: enhance,
     refresh: refreshAll,
     refreshSelect: function (select: HTMLSelectElement) {

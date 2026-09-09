@@ -17,3 +17,6 @@ build/
 *.log
 tmp/
 temp/
+
+# Local development handoff
+/HANDOFF.md

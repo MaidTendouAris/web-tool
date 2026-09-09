@@ -11,6 +11,8 @@
   },
   "include": [
     "shared-controls.ts",
+    "shared-resources.ts",
+    "shared-media-engine.ts",
     "shared-sortable.ts",
     "index.ts",
     "audio-processing/**/*.ts",

@@ -1,6 +1,8 @@
 (function () {
   "use strict";
 
+  (window as any).WebToolsResources.createCard(document.getElementById("resourceCard"), ["pdf-lib-js"]);
+
   type SupportedLanguage = "zh" | "en";
   type ToolMode = "images" | "merge" | "pages" | "watermark" | "metadata";
   type FitMode = "contain" | "cover";
@@ -35,9 +37,6 @@
   const THEME_STORAGE_KEY = "web-tools-theme";
   const LEGACY_LANGUAGE_STORAGE_KEY = "web-tool-language";
   const LEGACY_THEME_STORAGE_KEY = "web-tool-theme";
-  const RESOURCE_CACHE_DB_NAME = "web-tools-resource-cache";
-  const RESOURCE_CACHE_STORE_NAME = "resources";
-  const RESOURCE_CACHE_DB_VERSION = 1;
   const PDF_LIB_RESOURCE_ID = "pdf-lib-js";
   const A4_PORTRAIT = [595.28, 841.89];
   const A4_LANDSCAPE = [841.89, 595.28];
@@ -49,17 +48,12 @@
       home: "工具集",
       themeToggle: "切换主题",
       lead: "在浏览器本地完成图片转 PDF、合并拆分、页面管理、水印页码和元数据清理。",
-      engineIdle: "尚未加载",
-      engineLoading: "正在加载本地 pdf-lib...",
-      engineReady: "已加载，可开始处理",
-      engineLoadButton: "加载本地库",
-      engineMissing: "未找到 pdf-lib.min.js，请先在入口页资源管理中导入或下载到浏览器缓存。",
+      engineMissing: "缺少 PDF 处理资源，请使用页面顶部的本地资源卡片下载或导入。",
       inputTitle: "输入文件",
       outputTitle: "输出",
       settingsTitle: "处理设置",
       noOutput: "暂无输出",
       waitingInput: "等待输入文件",
-      resourceWarning: "需要先在入口页资源管理中导入或下载 pdf-lib.min.js 到浏览器缓存。进入本页后仍需点击“加载本地库”或在处理时自动加载。",
       imagesTab: "图片转 PDF",
       mergeTab: "合并与拆分",
       pagesTab: "页面管理",
@@ -134,17 +128,12 @@
       home: "Tools",
       themeToggle: "Toggle theme",
       lead: "Work locally with images to PDF, merging, splitting, page management, watermarks, page numbers, and metadata cleanup.",
-      engineIdle: "Not loaded",
-      engineLoading: "Loading local pdf-lib...",
-      engineReady: "Loaded and ready",
-      engineLoadButton: "Load Local Library",
-      engineMissing: "pdf-lib.min.js was not found. Import or download it into browser cache from Resource Management first.",
+      engineMissing: "PDF resources are missing. Download or import them using Local resources at the top of this page.",
       inputTitle: "Input Files",
       outputTitle: "Output",
       settingsTitle: "Settings",
       noOutput: "No output yet",
       waitingInput: "Waiting for files",
-      resourceWarning: "Import or download pdf-lib.min.js into browser cache from Resource Management first. This page still loads the local library before processing.",
       imagesTab: "Images to PDF",
       mergeTab: "Merge & Split",
       pagesTab: "Page Manager",
@@ -229,7 +218,6 @@
   let metadataPdf: PdfEntry | null = null;
   let activePreviewUrl = "";
   let pdfLibPromise: Promise<any> | null = null;
-  let pdfLibReady = false;
   const pagePreviewCache = new Map<string, string>();
 
   function t(key: string): string {
@@ -268,11 +256,9 @@
     setText("#homeLink", "home");
     setText("#pageTitle", "title");
     setText("#pageLead", "lead");
-    setText("#loadPdfLibButton", "engineLoadButton");
     setText("#inputTitle", "inputTitle");
     setText("#outputTitle", "outputTitle");
     setText("#settingsTitle", "settingsTitle");
-    setText("#resourceWarning", "resourceWarning");
     setText("#imageUploadTitle", "imageUploadTitle");
     setText("#imageUploadHint", "imageUploadHint");
     setText("#pdfUploadTitle", "pdfUploadTitle");
@@ -321,16 +307,10 @@
     $$(".language button[data-lang]").forEach((button) => {
       button.classList.toggle("active", button.dataset.lang === language);
     });
-    updateEngineStatus();
+
     renderAll();
     if (!$("#resultBox").dataset.hasOutput) $("#resultBox").textContent = t("noOutput");
     if (!$("#statusLine").dataset.locked) $("#statusLine").textContent = t("waitingInput");
-  }
-
-  function updateEngineStatus() {
-    if (pdfLibReady) $("#engineStatus").textContent = t("engineReady");
-    else if (pdfLibPromise) $("#engineStatus").textContent = t("engineLoading");
-    else $("#engineStatus").textContent = t("engineIdle");
   }
 
   function setStatus(key: string) {
@@ -378,18 +358,6 @@
     });
   }
 
-  function openResourceDb(): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(RESOURCE_CACHE_DB_NAME, RESOURCE_CACHE_DB_VERSION);
-      request.onupgradeneeded = () => {
-        const db = request.result;
-        if (!db.objectStoreNames.contains(RESOURCE_CACHE_STORE_NAME)) db.createObjectStore(RESOURCE_CACHE_STORE_NAME);
-      };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
   function cachedResourceToBlob(record: any): Blob | null {
     if (!record) return null;
     if (record instanceof Blob) return record;
@@ -409,46 +377,35 @@
   }
 
   async function readCachedResource(id: string): Promise<Blob | null> {
-    const db = await openResourceDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(RESOURCE_CACHE_STORE_NAME, "readonly");
-      const request = tx.objectStore(RESOURCE_CACHE_STORE_NAME).get(id);
-      request.onsuccess = () => resolve(cachedResourceToBlob(request.result));
-      request.onerror = () => reject(request.error);
-      tx.oncomplete = () => db.close();
-      tx.onerror = () => db.close();
-    });
+    const record = await (window as any).WebToolsResources.read(id);
+    return (window as any).WebToolsResources.available(record) ? cachedResourceToBlob(record) : null;
   }
 
   async function getPdfLib() {
     const existing = (window as any).PDFLib;
     if (existing) {
-      pdfLibReady = true;
-      updateEngineStatus();
       return existing;
     }
     if (pdfLibPromise) return pdfLibPromise;
     pdfLibPromise = (async () => {
-      updateEngineStatus();
       const blob = await readCachedResource(PDF_LIB_RESOURCE_ID);
       if (!blob) throw new Error(t("engineMissing"));
       const url = URL.createObjectURL(blob);
-      await new Promise<void>((resolve, reject) => {
-        const script = document.createElement("script");
-        script.src = url;
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error(t("engineMissing")));
-        document.head.appendChild(script);
-      });
-      URL.revokeObjectURL(url);
+      const script = document.createElement("script");
+      try {
+        await new Promise<void>((resolve, reject) => {
+          script.src = url;
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error(t("engineMissing")));
+          document.head.appendChild(script);
+        });
+      } finally { URL.revokeObjectURL(url); script.remove(); }
       const lib = (window as any).PDFLib;
       if (!lib) throw new Error(t("engineMissing"));
-      pdfLibReady = true;
-      updateEngineStatus();
       return lib;
     })().catch((error) => {
       pdfLibPromise = null;
-      updateEngineStatus();
+
       throw error;
     });
     return pdfLibPromise;
@@ -1030,7 +987,7 @@
     onOrderChange: syncMergePdfOrder
   });
 
-  $("#loadPdfLibButton").addEventListener("click", () => run(async () => { await getPdfLib(); setStatus("ready"); }));
+
   $("#generateImagesButton").addEventListener("click", () => run(generateImagesPdf));
   $("#mergeButton").addEventListener("click", () => run(mergePdfsAction));
   $("#splitButton").addEventListener("click", () => run(splitPdfAction));

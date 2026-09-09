@@ -54,7 +54,7 @@
     <nav class="topbar" aria-label="页面导航" id="navLabel">
       <a class="home" href="../index.html">‹ <span id="homeLink">工具集</span></a>
       <div class="controls wt-top-actions">
-        <span class="version-badge">V1.2.0</span>
+        <span class="version-badge">V1.2.1</span>
         <div class="language" aria-label="Language">
           <button class="active" type="button" data-lang="zh">中文</button>
           <button type="button" data-lang="en">EN</button>
@@ -68,11 +68,7 @@
         <h1 id="pageTitle">音频处理</h1>
         <p class="lead" id="pageLead">使用本地 FFmpeg.wasm 资源进行音频转换、剪切、转封装、元数据编辑、预览、音量和速度处理。</p>
       </div>
-      <div class="engine-card">
-        <strong id="engineTitle">FFmpeg Core</strong>
-        <span id="engineStatus">尚未加载</span>
-        <button class="btn" id="loadCoreButton" type="button">加载本地核心</button>
-      </div>
+      <aside id="resourceCard" class="wt-resource-card"></aside>
     </section>
 
     <div class="tabs" role="tablist" aria-label="音频工具" id="toolTabs">
@@ -105,7 +101,7 @@
           </div>
         </div>
         <div id="fileBox"></div>
-        <div class="resource-warning" id="resourceWarning">需要先在入口页资源管理中导入或下载 ffmpeg-core.js 和 ffmpeg-core.wasm 到浏览器缓存。进入本页后仍需点击“加载本地核心”或在处理时自动加载。</div>
+
       </div>
 
       <div class="card workspace-card-output">
@@ -230,6 +226,7 @@
         </div>
 
         <div class="status-line" id="statusLine">等待输入文件</div>
+        <div id="processingProgress" hidden></div>
       </div>
 
       <div class="card workspace-card-log">
@@ -241,6 +238,8 @@
   </main>
   <script src="../shared-sortable.js"></script>
   <script src="../shared-controls.js"></script>
+  <script src="../shared-media-engine.js"></script>
+  <script src="../shared-resources.js"></script>
   <script src="./audio-processing.js"></script>
 </body>
 </html>

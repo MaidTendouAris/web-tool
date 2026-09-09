@@ -250,30 +250,8 @@ const LANGUAGE_STORAGE_KEY = "web-tools-language";
 const THEME_STORAGE_KEY = "web-tools-theme";
 const LEGACY_LANGUAGE_STORAGE_KEY = "web-tool-language";
 const LEGACY_THEME_STORAGE_KEY = "web-tool-theme";
-const RESOURCE_CACHE_DB_NAME = "web-tools-resource-cache";
-const RESOURCE_CACHE_STORE_NAME = "resources";
-const RESOURCE_CACHE_DB_VERSION = 1;
 
-const RESOURCE_TABLE: ManagedResource[] = [
-  {
-    id: "ffmpeg-core-js",
-    fileName: "ffmpeg-core.js",
-    downloadUrl: "https://cdnjs.cloudflare.com/ajax/libs/ffmpeg-core/0.12.10/umd/ffmpeg-core.js",
-    descriptionKey: "ffmpegCoreJsDesc"
-  },
-  {
-    id: "ffmpeg-core-wasm",
-    fileName: "ffmpeg-core.wasm",
-    downloadUrl: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/ffmpeg-core.wasm",
-    descriptionKey: "ffmpegCoreWasmDesc"
-  },
-  {
-    id: "pdf-lib-js",
-    fileName: "pdf-lib.min.js",
-    downloadUrl: "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js",
-    descriptionKey: "pdfLibDesc"
-  }
-];
+const RESOURCE_TABLE: ManagedResource[] = (window as any).WebToolsResources.definitions;
 
 const searchInput = document.getElementById("toolSearch") as HTMLInputElement | null;
 const clearSearchButton = document.getElementById("clearSearch") as HTMLButtonElement | null;
@@ -449,46 +427,22 @@ async function handleResourceAction(resource: ManagedResource, action: string): 
   if (action === "clear") await clearCachedResource(resource);
 }
 
-function openResourceCacheDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(RESOURCE_CACHE_DB_NAME, RESOURCE_CACHE_DB_VERSION);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(RESOURCE_CACHE_STORE_NAME)) {
-        db.createObjectStore(RESOURCE_CACHE_STORE_NAME, { keyPath: "id" });
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
 function runResourceCacheTransaction<T>(
   mode: IDBTransactionMode,
   callback: (store: IDBObjectStore) => IDBRequest<T>
 ): Promise<T> {
-  return openResourceCacheDb().then((db) => new Promise<T>((resolve, reject) => {
-    const transaction = db.transaction(RESOURCE_CACHE_STORE_NAME, mode);
-    const request = callback(transaction.objectStore(RESOURCE_CACHE_STORE_NAME));
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-    transaction.oncomplete = () => db.close();
-    transaction.onerror = () => {
-      db.close();
-      reject(transaction.error);
-    };
-  }));
+  return (window as any).WebToolsResources.transaction(mode, callback);
 }
 
 function getCachedResource(resource: ManagedResource): Promise<any> {
-  return runResourceCacheTransaction<any>("readonly", (store) => store.get(resource.id));
+  return (window as any).WebToolsResources.read(resource.id);
 }
 
 async function checkCachedResource(resource: ManagedResource): Promise<ResourceState> {
   if (!supportsResourceCache()) return "missing";
   try {
     const record = await getCachedResource(resource);
-    return record && record.content ? "ready" : "missing";
+    return (window as any).WebToolsResources.available(record) ? "ready" : "missing";
   } catch (_error) {
     return "missing";
   }
@@ -527,63 +481,13 @@ async function importManagedResource(resource: ManagedResource): Promise<void> {
       return;
     }
     const content = await file.arrayBuffer();
-    await runResourceCacheTransaction("readwrite", (store) => store.put({
-      id: resource.id,
-      fileName: resource.fileName,
-      content,
-      mimeType: file.type || "application/octet-stream",
-      size: file.size,
-      updatedAt: Date.now()
-    }));
+    await (window as any).WebToolsResources.put(resource.id, content, file.type || "application/octet-stream");
+
     cacheResourceStates.set(resource.id, "ready");
     renderResources();
   } catch (_error) {
     alert(getText("resourceImportFailed"));
   }
-}
-
-async function readResponseContentWithProgress(resource: ManagedResource, response: Response): Promise<ArrayBuffer> {
-  const total = Number(response.headers.get("content-length")) || 0;
-  if (total <= 0) {
-    cacheResourceDownloadProgress.set(resource.id, null);
-    renderResources();
-  }
-  if (!response.body) {
-    cacheResourceDownloadProgress.set(resource.id, null);
-    renderResources();
-    return response.arrayBuffer();
-  }
-
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let received = 0;
-  let lastPercent = -1;
-
-  while (true) {
-    const result = await reader.read();
-    if (result.done) break;
-    if (!result.value) continue;
-
-    chunks.push(result.value);
-    received += result.value.byteLength;
-
-    if (total > 0) {
-      const percent = Math.min(99, Math.floor((received / total) * 100));
-      if (percent !== lastPercent) {
-        lastPercent = percent;
-        cacheResourceDownloadProgress.set(resource.id, percent);
-        renderResources();
-      }
-    }
-  }
-
-  const content = new Uint8Array(received);
-  let offset = 0;
-  chunks.forEach((chunk) => {
-    content.set(chunk, offset);
-    offset += chunk.byteLength;
-  });
-  return content.buffer;
 }
 
 async function downloadResourceToCache(resource: ManagedResource): Promise<void> {
@@ -595,17 +499,10 @@ async function downloadResourceToCache(resource: ManagedResource): Promise<void>
   cacheResourceDownloadProgress.set(resource.id, 0);
   renderResources();
   try {
-    const response = await fetch(resource.downloadUrl);
-    if (!response.ok) throw new Error(String(response.status));
-    const content = await readResponseContentWithProgress(resource, response);
-    await runResourceCacheTransaction("readwrite", (store) => store.put({
-      id: resource.id,
-      fileName: resource.fileName,
-      content,
-      mimeType: response.headers.get("content-type") || "application/octet-stream",
-      size: content.byteLength,
-      updatedAt: Date.now()
-    }));
+    await (window as any).WebToolsResources.download(resource.id, (percent: number | null) => {
+      cacheResourceDownloadProgress.set(resource.id, percent);
+      renderResources();
+    });
     cacheResourceDownloadProgress.delete(resource.id);
     cacheResourceStates.set(resource.id, "ready");
     renderResources();
@@ -699,3 +596,5 @@ window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener("change", (
 applyTheme(resolveInitialTheme());
 applyLanguage(currentLanguage);
 refreshResourcePanel();
+
+window.addEventListener("web-tools-resources-changed", () => { void checkResources(); });
