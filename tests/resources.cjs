@@ -5,6 +5,9 @@ const assert = require("assert/strict");
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const pdfScript = fs.readFileSync(process.env.PDF_LIB_JS || require.resolve("pdf-lib/dist/pdf-lib.min.js"));
 const root = path.resolve(__dirname, "..");
+if (!process.env.FFMPEG_CORE_DIR) throw Error("Set FFMPEG_CORE_DIR to the supported FFmpeg core directory.");
+const coreScript = fs.readFileSync(path.join(process.env.FFMPEG_CORE_DIR, "ffmpeg-core.js"));
+const coreWasm = fs.readFileSync(path.join(process.env.FFMPEG_CORE_DIR, "ffmpeg-core.wasm"));
 const server = http.createServer((req, res) => {
   const file = path.resolve(root, "." + decodeURIComponent(req.url.split("?")[0]));
   if (!file.startsWith(root + path.sep)) return res.writeHead(403).end();
@@ -28,12 +31,12 @@ const server = http.createServer((req, res) => {
       const url = route.request().url();
       if (url.endsWith("ffmpeg-core.js")) {
         hits.js++;
-        return route.fulfill({ contentType: "text/javascript", body: "var createFFmpegCore = function(){};" });
+        return route.fulfill({ contentType: "text/javascript", body: coreScript });
       }
       if (url.endsWith("ffmpeg-core.wasm")) {
         hits.wasm++;
         if (failWasm) return route.fulfill({ status: 503, body: "offline" });
-        return route.fulfill({ contentType: "application/wasm", body: Buffer.from([0,97,115,109,1,0,0,0]) });
+        return route.fulfill({ contentType: "application/wasm", body: coreWasm });
       }
       if (url.endsWith("pdf-lib.min.js")) {
         hits.pdf++;
@@ -95,9 +98,30 @@ const server = http.createServer((req, res) => {
     await card.locator('input[type="file"]').setInputFiles({ name: "wrong.js", mimeType: "text/javascript", buffer: Buffer.from("wrong") });
     await page.waitForFunction(() => document.querySelector(".wt-resource-message").textContent.includes("导入失败"));
     await state("missing");
-    await card.locator('input[type="file"]').setInputFiles({ name: "ffmpeg-core.js", mimeType: "text/javascript", buffer: Buffer.from("var createFFmpegCore = function(){};") });
+    await card.locator('input[type="file"]').setInputFiles({ name: "ffmpeg-core.js", mimeType: "text/javascript", buffer: coreScript });
     await state("ready");
     console.log("Local import and invalid filename recovery: PASS");
+    // Stored flags must never bypass verification of changed bytes.
+    await page.evaluate(async () => {
+      const record = await WebToolsResources.read("ffmpeg-core-js");
+      new Uint8Array(record.content)[0] ^= 1;
+      record.validated = true;
+      await WebToolsResources.transaction("readwrite", store => store.put(record));
+    });
+    await state("missing");
+    await card.locator("summary").click();
+    assert.match(await card.innerText(), /损坏或版本不符/);
+    await card.locator("summary").click();
+    await card.locator("[data-download]").click();
+    await state("ready");
+    await page.evaluate(async () => {
+      let rejected = false;
+      try { await WebToolsResources.put("ffmpeg-core-js", new TextEncoder().encode("invalid").buffer, "text/javascript"); }
+      catch (_) { rejected = true; }
+      if (!rejected || !WebToolsResources.available(await WebToolsResources.read("ffmpeg-core-js"))) throw Error("Invalid import damaged good cache");
+    });
+    console.log("Corruption detection, repair, rejected import preserves good cache: PASS");
+
 
     // No manual library load: download from PDF page, then create a real PDF.
     await page.goto(base + "/image-to-pdf/image-to-pdf.html");
@@ -150,16 +174,16 @@ const server = http.createServer((req, res) => {
     const legacy = await legacyContext.newPage();
     await legacy.goto(base + "/tests/README.md");
     await legacy.addScriptTag({ path: path.join(root, "shared-resources.js") });
-    await legacy.evaluate(async () => {
+    await legacy.evaluate(async bytes => {
       await new Promise((resolve,reject) => { const r=indexedDB.deleteDatabase("web-tools-resource-cache");r.onsuccess=resolve;r.onerror=()=>reject(r.error); });
       await new Promise(resolve => {
         const r=indexedDB.open("web-tools-resource-cache",1);
         r.onupgradeneeded=()=>r.result.createObjectStore("resources");
         r.onsuccess=()=>{r.result.close();resolve();};
       });
-      await WebToolsResources.put("pdf-lib-js", new Uint8Array([1,2,3]).buffer,"application/javascript");
+      await WebToolsResources.put("pdf-lib-js", new Uint8Array(bytes).buffer,"application/javascript");
       if (!WebToolsResources.available(await WebToolsResources.read("pdf-lib-js"))) throw Error("Keyless cache write failed");
-    });
+    }, Array.from(pdfScript));
     await legacyContext.close();
     console.log("Legacy keyless IndexedDB store: PASS");
 

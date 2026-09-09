@@ -1,0 +1,29 @@
+name: Static tools checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BROWSER_CHANNEL: chromium
+      FFMPEG_CORE_DIR: tmp/runtime
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: git diff --check
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:fixtures
+      - run: npm run test:browser
+      - run: npm run test:media

@@ -1,59 +1,67 @@
-# 音视频与资源回归测试
+# 开发检查与浏览器回归
 
-普通使用无需安装依赖或执行构建。以下命令仅用于开发验证。
+普通使用无需安装依赖或执行构建。开发环境需要 Node.js 22+。
 
-## 类型和语法检查
+## 安装、检查与同步
 
-需要 TypeScript 6（本次使用 6.0.3）。从仓库根目录执行：
+~~~sh
+npm ci
+npm run check
+~~~
 
-~~~powershell
-tsc --ignoreConfig --noEmit --target ES2020 --module none --ignoreDeprecations 6.0 --lib 'DOM,ES2020' --strict false shared-controls.ts shared-resources.ts index.ts image-to-pdf/image-to-pdf.ts shared-media-engine.ts audio-processing/audio-processing.ts video-processing/video-processing.ts
-node --check shared-media-engine.js
-node --check shared-controls.js
-node --check audio-processing/audio-processing.js
-node --check video-processing/video-processing.js
+检查覆盖所有工具（包括密码生成器）的 TypeScript、JavaScript 语法、普通脚本兼容性，以及已提交 JS 是否与 TS 编译结果一致。另将 HTTP 环境使用的 SHA-256 实现与 Node crypto 在填充边界和大输入下比较。
+
+修改 TS 后执行：
+
+~~~sh
+npm run sync:js
+npm run check
 git diff --check
 ~~~
 
-同步 JavaScript 时移除上述 TypeScript 命令中的 --noEmit。全项目类型检查另有图片处理和单位转换文件的既有错误；这些不属于本次音视频改动。
+## 准备真实资源
 
-## 真实浏览器回归
-
-需要 Node.js、Playwright、JSZip，以及 Edge。测试不自动下载依赖或 FFmpeg，使用与主页资源管理器相同的 @ffmpeg/core 0.12.10 UMD 核心文件。
-
-将 ffmpeg-core.js 与 ffmpeg-core.wasm 放入一个本地目录，然后运行：
-
-~~~powershell
-$env:FFMPEG_CORE_DIR = 'D:\test-resources\ffmpeg'
-node tests/media-processing.cjs
+~~~sh
+npm run test:fixtures
 ~~~
 
-Playwright 和 JSZip 默认通过 Node 模块解析加载；若安装在别处，可分别将 PLAYWRIGHT_MODULE 和 JSZIP_MODULE 设置为对应模块目录的绝对路径。BROWSER_CHANNEL 默认为 msedge，也可设置为 chrome。
+此命令下载并校验主页使用的固定版本资源，默认写入已忽略的 tmp/runtime。不会将第三方库加入发布源码。下载需要网络。
 
-测试会启动临时本地 HTTP 服务和无头浏览器，使用隔离浏览器上下文，不访问日常浏览器缓存。生成素材在系统临时目录内，成功后自动清理；失败时打印保留目录的位置。
+## 浏览器测试
 
-覆盖内容：
-
-- 真实音频转换、裁剪、元数据读写、增益、变速和批量输出。
-- JSZip 独立校验批量 ZIP 的条目和 CRC。
-- 视频元数据、转封装、音频提取、裁剪、变速、GIF、拼接。
-- 变速过程中出现中间百分比，主线程定时器继续运行，取消后重试。
-- 错误参数导致失败后可继续新任务。
-- 1920、1366、760、390px 下两页无横向溢出。
-- file:// 直接打开页面后正常加载 Blob Worker 和本地核心。
-- 320 MiB 填充 MP4 的 WORKERFS 读取、转封装，以及模拟缺少 WORKERFS 的核心回退路径。
-
-大文件用例在短 MP4 后追加合法 free box，仅验证大输入读取和转封装，不代表长视频或高分辨率重编码的内存上限。
-
-
-## 资源卡片回归
-
-运行以下测试需要 Playwright 和 pdf-lib（开发测试依赖）。默认使用已安装的 Edge：
+本地默认使用已安装的 Edge。在 PowerShell 中运行：
 
 ~~~powershell
-node tests/resources.cjs
+$env:FFMPEG_CORE_DIR = Join-Path $PWD 'tmp/runtime'
+npm run test:browser
+npm run test:media
 ~~~
 
-Playwright 可通过 PLAYWRIGHT_MODULE 指定模块路径。PDF_LIB_JS 可指定 pdf-lib.min.js 的绝对路径；省略时从已安装的 pdf-lib 包读取。RESOURCE_SCREENSHOT_DIR 为可选截图输出目录。
+使用 Playwright 自带 Chromium 时，先运行 npx playwright install chromium，并设置 BROWSER_CHANNEL=chromium。GitHub Actions 使用锁定依赖和 Chromium 自动运行上述检查。运行时页面仍直接使用已提交的 JS，无部署构建步骤。
 
-该测试拦截 CDN 请求以稳定模拟下载成功和失败，验证缺失、部分缓存、重试、事务中止、跨页同步、本地导入、旧无 keyPath 缓存、存储权限错误、file:// 下载，以及真实 PDF 自动加载与生成。三工具页检查 1920、1366、760、390px 和中英文、主题切换。
+可选模块路径：PLAYWRIGHT_MODULE、JSZIP_MODULE、PDF_LIB_MODULE。PDF_LIB_JS 可指定支持版本的 pdf-lib.min.js；默认解析已安装的 pdf-lib。RESOURCE_SCREENSHOT_DIR 可保存资源卡片测试截图。
+
+### 图片、PDF 与偏好设置
+
+- 故意乱序释放真实图片编码回调，检查旧结果不会覆盖新尺寸或下载。
+- 切换输入时使旧结果失效，超大尺寸在创建输出画布之前被阻止。
+- 80 页 PDF 的按需预览、源文档复用、URL 缓存限制、旋转、删除和真实导出。
+- 禁用 localStorage 后七个页面仍可启动和切换语言、主题；正常存储时跨页同步。
+- 七个页面在 1920、1366、760、390px 视口下无横向溢出。
+
+### 资源管理
+
+- 使用固定版本的真实资源字节，拦截 CDN 请求模拟下载失败、重试及事务中止。
+- 验证缺失、部分缓存、跨页同步、本地导入、旧无 keyPath 缓存、存储权限错误及 file:// 下载。
+- 篡改已有资源后必须识别损坏并可修复；错误导入不能覆盖有效缓存。
+- PDF 自动加载和真实生成。
+
+### 音视频
+
+- 音频转换、裁剪、元数据、增益、变速及批量 ZIP；JSZip 独立验证 CRC。
+- 视频元数据、转封装、音频提取、裁剪、变速、GIF 和拼接。
+- 中间处理百分比、主线程定时器响应、取消后重试与错误参数恢复。
+- file:// 下 Blob Worker 和本地核心加载。
+- 320 MiB 填充 MP4 的 WORKERFS 输入与转封装，以及缺少 WORKERFS 时的 MEMFS 回退。
+
+大文件素材在短 MP4 后添加合法填充，仅验证大输入 I/O，不代表长视频、高分辨率转码的内存上限。素材由测试生成于系统临时目录，成功后清理，失败时输出保留路径。

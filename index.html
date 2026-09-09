@@ -69,6 +69,7 @@
 
     .topbar {
       display: flex;
+      flex-wrap: wrap;
       justify-content: flex-end;
       gap: 10px;
       margin-bottom: 18px;
@@ -634,7 +635,7 @@
       <a class="github-link" href="#resourceManager" data-i18n="resourceTitle">资源管理</a>
       <a class="github-link" href="https://github.com/MaidTendouAris/web-tools" target="_blank" rel="noopener noreferrer">GitHub</a>
       <a class="github-link" href="https://github.com/MaidTendouAris/web-tools/issues" target="_blank" rel="noopener noreferrer" data-i18n="feedback">问题反馈</a>
-      <span class="version-badge">V1.2.3</span>
+      <span class="version-badge">V1.2.4</span>
       <div class="language" aria-label="Language">
         <button type="button" data-lang="zh">中文</button>
         <button type="button" data-lang="en">EN</button>
@@ -799,6 +800,7 @@
 
     <footer data-i18n="footer">所有工具均为静态页面。直接双击入口文件或部署到任意静态站点即可使用。</footer>
   </main>
+  <script src="./shared-preferences.js"></script>
   <script src="./shared-controls.js"></script>
   <script src="./shared-resources.js"></script>
   <script src="./index.js"></script>

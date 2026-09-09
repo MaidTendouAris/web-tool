@@ -1,6 +1,7 @@
 "use strict";
 (function () {
     "use strict";
+    const preferences = window.WebToolsPreferences;
     window.WebToolsResources.createCard(document.getElementById("resourceCard"), ["pdf-lib-js"]);
     const LANGUAGE_STORAGE_KEY = "web-tools-language";
     const THEME_STORAGE_KEY = "web-tools-theme";
@@ -81,6 +82,7 @@
             dropHere: "放置到这里",
             movedToPosition: "已移动到第 {position} 位",
             metadataEmpty: "未读取到元数据。",
+            previewFailed: "预览失败，点击重试",
             titleMeta: "标题",
             authorMeta: "作者",
             subjectMeta: "主题",
@@ -161,6 +163,7 @@
             dropHere: "Drop here",
             movedToPosition: "Moved to position {position}",
             metadataEmpty: "No metadata found.",
+            previewFailed: "Preview failed. Click to retry.",
             titleMeta: "Title",
             authorMeta: "Author",
             subjectMeta: "Subject",
@@ -185,25 +188,74 @@
     let activePreviewUrl = "";
     let pdfLibPromise = null;
     const pagePreviewCache = new Map();
+    const previewSources = new Map();
+    const previewTasks = new Map();
+    let previewQueue = Promise.resolve();
+    let modalRevision = 0;
+    let outputUrl = "";
+    let actionRunning = false;
+    const visiblePages = new Set();
+    const pageObserver = typeof IntersectionObserver === "undefined" ? null : new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+            const card = entry.target;
+            const page = managedPages.find(page => page.id === card.dataset.pageId);
+            if (!page)
+                return;
+            if (entry.isIntersecting) {
+                visiblePages.add(page.id);
+                updatePagePreview(card, page, managedPages.indexOf(page));
+            }
+            else {
+                visiblePages.delete(page.id);
+                card.querySelectorAll("embed").forEach(node => node.remove());
+                delete card.querySelector(".thumb").dataset.previewKey;
+            }
+        });
+        prunePreviewCache();
+    }, { rootMargin: "100px" });
+    function rememberSource(id, doc) {
+        previewSources.delete(id);
+        previewSources.set(id, doc);
+        while (previewSources.size > 2)
+            previewSources.delete(previewSources.keys().next().value);
+        return doc;
+    }
+    function getPreviewSource(entry, lib) {
+        const existing = previewSources.get(entry.id);
+        if (existing)
+            return rememberSource(entry.id, existing);
+        const pending = lib.PDFDocument.load(entry.bytes, { ignoreEncryption: true });
+        rememberSource(entry.id, pending);
+        pending.catch(() => { if (previewSources.get(entry.id) === pending)
+            previewSources.delete(entry.id); });
+        return pending;
+    }
+    function prunePreviewCache(protectedUrl = "") {
+        const valid = new Set(managedPages.map(page => page.id + ":" + page.rotation));
+        for (const [key, url] of pagePreviewCache) {
+            const pageId = key.slice(0, key.lastIndexOf(":"));
+            if (url !== activePreviewUrl && url !== protectedUrl && (!valid.has(key) || (pagePreviewCache.size > 16 && !visiblePages.has(pageId)))) {
+                URL.revokeObjectURL(url);
+                pagePreviewCache.delete(key);
+            }
+        }
+        const usedSources = new Set(managedPages.map(page => page.sourceId));
+        for (const [id, entry] of managedPdfs) {
+            if (!usedSources.has(id)) {
+                URL.revokeObjectURL(entry.url);
+                managedPdfs.delete(id);
+                previewSources.delete(id);
+            }
+        }
+    }
     function t(key) {
         return (TEXT[currentLanguage] && TEXT[currentLanguage][key]) || key;
     }
     function resolveInitialLanguage() {
-        const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) || localStorage.getItem(LEGACY_LANGUAGE_STORAGE_KEY);
-        if (saved === "zh" || saved === "en")
-            return saved;
-        const browserLanguage = (navigator.language || "").toLowerCase();
-        if (browserLanguage.startsWith("zh"))
-            return "zh";
-        if (browserLanguage.startsWith("en"))
-            return "en";
-        return "en";
+        return preferences.language();
     }
     function resolveInitialTheme() {
-        const saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
-        if (saved === "dark" || saved === "light")
-            return saved;
-        return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        return preferences.theme();
     }
     function applyTheme(theme) {
         document.documentElement.dataset.theme = theme;
@@ -382,13 +434,12 @@
         const lib = await getPdfLib();
         const bytes = await fileBytes(file);
         const doc = await lib.PDFDocument.load(bytes, { ignoreEncryption: true });
-        return {
+        const entry = {
             id: String(Date.now()) + "-" + Math.random().toString(16).slice(2),
-            file,
-            bytes,
-            url: URL.createObjectURL(file),
-            pageCount: doc.getPageCount()
+            file, bytes, url: URL.createObjectURL(file), pageCount: doc.getPageCount()
         };
+        rememberSource(entry.id, Promise.resolve(doc));
+        return entry;
     }
     async function addImages(files) {
         setStatus("loadingFiles");
@@ -447,12 +498,16 @@
         setStatus("loadingFiles");
         const entry = await loadPdfEntry(file);
         if (target === "watermark") {
+            if (watermarkPdf)
+                URL.revokeObjectURL(watermarkPdf.url);
             watermarkPdf = entry;
             renderSinglePdf("#watermarkPdfList", entry);
         }
         else {
+            if (metadataPdf)
+                URL.revokeObjectURL(metadataPdf.url);
             metadataPdf = entry;
-            renderMetadata(entry);
+            await renderMetadata(entry);
         }
         setStatus("ready");
     }
@@ -522,6 +577,8 @@
         list.innerHTML = "";
         mergePdfs.forEach((entry) => {
             const item = fileItem(entry, entry.pageCount + " " + t("pages") + " · " + formatBytes(entry.file.size), () => {
+                URL.revokeObjectURL(entry.url);
+                previewSources.delete(entry.id);
                 mergePdfs = mergePdfs.filter((item) => item.id !== entry.id);
                 renderMergePdfs();
             });
@@ -537,26 +594,44 @@
         if (entry)
             list.appendChild(fileItem(entry, entry.pageCount + " " + t("pages") + " · " + formatBytes(entry.file.size)));
     }
-    async function getPagePreviewUrl(page) {
-        const key = page.id + ":" + page.rotation;
+    function getPagePreviewUrl(page, force = false) {
+        const rotation = page.rotation;
+        const key = page.id + ":" + rotation;
         const cached = pagePreviewCache.get(key);
-        if (cached)
-            return cached;
-        const lib = await getPdfLib();
-        const entry = managedPdfs.get(page.sourceId);
-        if (!entry)
-            return "";
-        const source = await lib.PDFDocument.load(entry.bytes, { ignoreEncryption: true });
-        const preview = await lib.PDFDocument.create();
-        const [copied] = await preview.copyPages(source, [page.pageIndex]);
-        const existing = copied.getRotation ? copied.getRotation().angle : 0;
-        copied.setRotation(lib.degrees((existing + page.rotation) % 360));
-        preview.addPage(copied);
-        const bytes = await preview.save();
-        const blob = new Blob([bytes], { type: "application/pdf" });
-        const url = URL.createObjectURL(blob);
-        pagePreviewCache.set(key, url);
-        return url;
+        if (cached) {
+            pagePreviewCache.delete(key);
+            pagePreviewCache.set(key, cached);
+            return Promise.resolve(cached);
+        }
+        if (previewTasks.has(key))
+            return previewTasks.get(key);
+        const task = previewQueue.then(async () => {
+            // One generation at a time; yield between pages so input and scrolling remain responsive.
+            await new Promise(resolve => setTimeout(resolve, 0));
+            if (!managedPages.includes(page) || page.rotation !== rotation || (!force && !visiblePages.has(page.id)))
+                return "";
+            const entry = managedPdfs.get(page.sourceId);
+            if (!entry)
+                return "";
+            const lib = await getPdfLib();
+            const source = await getPreviewSource(entry, lib);
+            const preview = await lib.PDFDocument.create();
+            const [copied] = await preview.copyPages(source, [page.pageIndex]);
+            const existing = copied.getRotation ? copied.getRotation().angle : 0;
+            copied.setRotation(lib.degrees((existing + rotation) % 360));
+            preview.addPage(copied);
+            const bytes = await preview.save();
+            if (!managedPages.includes(page) || page.rotation !== rotation || (!force && !visiblePages.has(page.id)))
+                return "";
+            const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+            pagePreviewCache.set(key, url);
+            prunePreviewCache(url);
+            return url;
+        });
+        previewTasks.set(key, task);
+        previewQueue = task.then(() => { }, () => { });
+        task.finally(() => previewTasks.delete(key)).catch(() => { });
+        return task;
     }
     function updatePagePreview(card, page, visibleIndex) {
         const thumb = card.querySelector(".thumb");
@@ -564,22 +639,34 @@
         const fallback = card.querySelector(".thumb-fallback");
         if (fallback)
             fallback.textContent = String(visibleIndex + 1);
+        if (!visiblePages.has(page.id))
+            return;
         if (thumb.dataset.previewKey === key)
             return;
         thumb.dataset.previewKey = key;
         thumb.querySelectorAll("embed").forEach((node) => node.remove());
         void getPagePreviewUrl(page).then((url) => {
-            if (!url || thumb.dataset.previewKey !== key)
+            if (!url || !card.isConnected || !visiblePages.has(page.id) || thumb.dataset.previewKey !== key) {
+                if (thumb.dataset.previewKey === key)
+                    delete thumb.dataset.previewKey;
                 return;
+            }
             const embed = document.createElement("embed");
             embed.type = "application/pdf";
             embed.src = url + "#toolbar=0&navpanes=0&scrollbar=0&view=Fit";
             thumb.insertBefore(embed, thumb.firstChild);
+        }).catch(() => {
+            if (thumb.dataset.previewKey === key) {
+                delete thumb.dataset.previewKey;
+                thumb.title = t("previewFailed");
+            }
         });
     }
     function openPagePreview(page) {
-        void getPagePreviewUrl(page).then((url) => {
-            if (!url)
+        const revision = ++modalRevision;
+        // A visible thumbnail may already have queued this page. Retry once if it left the viewport.
+        void getPagePreviewUrl(page, true).then(url => url || getPagePreviewUrl(page, true)).then((url) => {
+            if (!url || revision !== modalRevision || !managedPages.includes(page))
                 return;
             activePreviewUrl = url;
             const modal = $("#pagePreviewModal");
@@ -588,14 +675,17 @@
             title.textContent = page.sourceName + " · p." + (page.pageIndex + 1) + "/" + page.pageCount;
             embed.src = url + "#toolbar=0&navpanes=0&scrollbar=0&view=Fit";
             modal.hidden = false;
-        });
+        }).catch(error => { if (revision === modalRevision)
+            showError(error); });
     }
     function closePagePreview() {
+        modalRevision++;
         const modal = $("#pagePreviewModal");
         const embed = $("#pagePreviewEmbed");
         embed.removeAttribute("src");
         activePreviewUrl = "";
         modal.hidden = true;
+        prunePreviewCache();
     }
     function createPageCard(page) {
         const card = document.createElement("div");
@@ -619,6 +709,7 @@
         rotate.addEventListener("click", () => {
             page.rotation = (page.rotation + 90) % 360;
             updatePageCard(card, page, managedPages.findIndex((entry) => entry.id === page.id));
+            prunePreviewCache();
         });
         const remove = document.createElement("button");
         remove.className = "btn";
@@ -627,6 +718,10 @@
         remove.textContent = t("remove");
         remove.addEventListener("click", () => {
             managedPages = managedPages.filter((entry) => entry.id !== page.id);
+            pageObserver?.unobserve(card);
+            visiblePages.delete(page.id);
+            if (activePreviewUrl && pagePreviewCache.get(page.id + ":" + page.rotation) === activePreviewUrl)
+                closePagePreview();
             card.remove();
             renderManagedPages();
         });
@@ -654,9 +749,16 @@
             const card = existingCards.get(page.id) || createPageCard(page);
             updatePageCard(card, page, visibleIndex);
             grid.appendChild(card);
+            if (pageObserver)
+                pageObserver.observe(card);
+            else {
+                visiblePages.add(page.id);
+                updatePagePreview(card, page, visibleIndex);
+            }
             existingCards.delete(page.id);
         });
-        existingCards.forEach((card) => card.remove());
+        existingCards.forEach((card) => { pageObserver?.unobserve(card); visiblePages.delete(card.dataset.pageId); card.remove(); });
+        prunePreviewCache();
     }
     async function renderMetadata(entry) {
         const lib = await getPdfLib();
@@ -873,7 +975,9 @@
     async function downloadDoc(doc, name) {
         const bytes = await doc.save();
         const blob = new Blob([bytes], { type: "application/pdf" });
-        const url = URL.createObjectURL(blob);
+        if (outputUrl)
+            URL.revokeObjectURL(outputUrl);
+        const url = outputUrl = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
         link.download = normalizePdfName(name);
@@ -881,16 +985,35 @@
         $("#resultBox").dataset.hasOutput = "true";
         $("#resultBox").innerHTML = "";
         $("#resultBox").appendChild(link);
+        window.WebToolsControls.addOutputClear($("#resultBox"), () => {
+            URL.revokeObjectURL(outputUrl);
+            outputUrl = "";
+            $("#resultBox").textContent = t("noOutput");
+            $("#resultBox").dataset.hasOutput = "";
+        });
         setStatus("done");
     }
+    function showError(error) {
+        setStatus("failed");
+        $("#statusLine").textContent = window.WebToolsControls.describeError(error);
+    }
     async function run(action) {
+        if (actionRunning)
+            return;
+        actionRunning = true;
+        const controls = Array.from(document.querySelectorAll("main input, main button, main select"));
+        const disabled = controls.map(control => control.disabled);
+        controls.forEach(control => control.disabled = true);
         try {
             setStatus("loadingFiles");
             await action();
         }
         catch (error) {
-            setStatus("failed");
-            alert(error instanceof Error ? error.message : String(error));
+            showError(error);
+        }
+        finally {
+            actionRunning = false;
+            controls.forEach((control, index) => control.disabled = disabled[index]);
         }
     }
     function setTool(tool) {
@@ -910,12 +1033,13 @@
         label.addEventListener("drop", (event) => {
             event.preventDefault();
             label.classList.remove("dragover");
-            if (event.dataTransfer?.files)
-                void handler(event.dataTransfer.files);
+            if (event.dataTransfer?.files && !actionRunning)
+                void run(async () => { await handler(Array.from(event.dataTransfer.files)); });
         });
         input.addEventListener("change", () => {
-            if (input.files)
-                void handler(input.files);
+            const files = Array.from(input.files || []);
+            if (files.length)
+                void run(async () => { await handler(files); });
             input.value = "";
         });
     }
@@ -925,12 +1049,12 @@
     wireDrop($("#pdfUploadWatermark"), $("#watermarkPdfInput"), (files) => {
         const file = Array.from(files)[0];
         if (file)
-            void setSinglePdf(file, "watermark");
+            return setSinglePdf(file, "watermark");
     });
     wireDrop($("#pdfUploadMetadata"), $("#metadataPdfInput"), (files) => {
         const file = Array.from(files)[0];
         if (file)
-            void setSinglePdf(file, "metadata");
+            return setSinglePdf(file, "metadata");
     });
     sortable.bind({
         container: $("#imageList"),
@@ -980,21 +1104,22 @@
             const next = button.dataset.lang;
             if (next !== "zh" && next !== "en")
                 return;
-            localStorage.setItem(LANGUAGE_STORAGE_KEY, next);
+            preferences.setItem(LANGUAGE_STORAGE_KEY, next);
             applyLanguage(next);
         });
     });
     $("#themeButton").addEventListener("click", () => {
         const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-        localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+        preferences.setItem(THEME_STORAGE_KEY, nextTheme);
         applyTheme(nextTheme);
     });
     window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
-        const saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
+        const saved = preferences.getItem(THEME_STORAGE_KEY) || preferences.getItem(LEGACY_THEME_STORAGE_KEY);
         if (saved === "dark" || saved === "light")
             return;
         applyTheme(event.matches ? "dark" : "light");
     });
+    preferences.subscribe(() => { applyLanguage(resolveInitialLanguage()); applyTheme(resolveInitialTheme()); });
     applyTheme(resolveInitialTheme());
     applyLanguage(currentLanguage);
     setTool("images");

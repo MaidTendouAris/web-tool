@@ -845,7 +845,40 @@
             }
         };
     }
+    function describeError(error) {
+        const raw = error?.message || String(error);
+        const zh = document.documentElement.lang.startsWith("zh");
+        if (/ResourceIntegrityError/.test(raw))
+            return zh ? "资源损坏或版本不符，请在本地资源卡片中修复后重试。" : "Resource is damaged or incompatible. Repair it in Local resources and retry.";
+        if (/memory|out of bounds|allocation|Array buffer|Cannot enlarge/i.test(raw))
+            return zh ? "可用内存不足。请缩短片段、降低输出尺寸或减少文件数量后重试。" : "Insufficient memory. Use a shorter clip, smaller output dimensions or fewer files, then retry.";
+        if (/QuotaExceeded|quota/i.test(raw))
+            return zh ? "浏览器存储空间不足，请清理缓存后重试。" : "Browser storage is full. Clear cached resources and retry.";
+        if (/SecurityError|denied|IndexedDB unavailable/i.test(raw))
+            return zh ? "浏览器禁止访问存储，请调整站点存储权限后重试。" : "Browser storage access is blocked. Check this site's storage permissions and retry.";
+        if (/Unknown encoder|Encoder .*not found|Invalid argument|Unrecognized option|Option not found/i.test(raw))
+            return zh ? "编码器或参数不受支持，请检查输出格式及高级参数。详情：" + raw : "Unsupported encoder or parameters. Check the output format and advanced options. Details: " + raw;
+        if (/Invalid data|does not contain any stream|codec.*not.*supported|not find codec|could not find.*stream/i.test(raw))
+            return zh ? "无法读取此媒体格式，请检查文件是否完整，或尝试其他输出格式。详情：" + raw : "Cannot read this media format. Check that the file is complete or try another output format. Details: " + raw;
+        return (zh ? "处理失败，可调整设置后重试。详情：" : "Processing failed. Adjust the settings and retry. Details: ") + raw;
+    }
+    function renderOutputClear() {
+        document.querySelectorAll(".wt-output-clear").forEach(button => {
+            button.textContent = document.documentElement.lang.startsWith("zh") ? "移除输出" : "Remove output";
+        });
+    }
+    new MutationObserver(renderOutputClear).observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
+    function addOutputClear(host, clear) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "btn wt-output-clear";
+        button.onclick = clear;
+        host.appendChild(button);
+        renderOutputClear();
+    }
     global.WebToolsControls = {
+        describeError: describeError,
+        addOutputClear: addOutputClear,
         createProgress: createProgress,
         enhance: enhance,
         refresh: refreshAll,

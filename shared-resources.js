@@ -2,9 +2,9 @@
 (function (global) {
     "use strict";
     const definitions = [
-        { id: "ffmpeg-core-js", fileName: "ffmpeg-core.js", downloadUrl: "https://cdnjs.cloudflare.com/ajax/libs/ffmpeg-core/0.12.10/umd/ffmpeg-core.js", descriptionKey: "ffmpegCoreJsDesc" },
-        { id: "ffmpeg-core-wasm", fileName: "ffmpeg-core.wasm", downloadUrl: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/ffmpeg-core.wasm", descriptionKey: "ffmpegCoreWasmDesc" },
-        { id: "pdf-lib-js", fileName: "pdf-lib.min.js", downloadUrl: "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js", descriptionKey: "pdfLibDesc" }
+        { id: "ffmpeg-core-js", fileName: "ffmpeg-core.js", sha256: "b266ab5b952555881dd6310663986994a182acb2b7ff25cf10a25f7a37ac2b21", downloadUrl: "https://cdnjs.cloudflare.com/ajax/libs/ffmpeg-core/0.12.10/umd/ffmpeg-core.js", descriptionKey: "ffmpegCoreJsDesc" },
+        { id: "ffmpeg-core-wasm", fileName: "ffmpeg-core.wasm", sha256: "9f57947a5bd530d8f00c5b3f2cb2a3492faa7e5d823315342d6a8656d0a6b7b7", downloadUrl: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/ffmpeg-core.wasm", descriptionKey: "ffmpegCoreWasmDesc" },
+        { id: "pdf-lib-js", fileName: "pdf-lib.min.js", sha256: "0f9a5cad07941f0826586c94e089d89b918c46e5c17cf2d5a3c6f666e3bc694f", downloadUrl: "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js", descriptionKey: "pdfLibDesc" }
     ];
     const downloads = new Map();
     let channel = null;
@@ -49,15 +49,84 @@
             };
         });
     }
-    function read(id) { return transaction("readonly", store => store.get(id)).then(record => record instanceof Blob ? { id, content: record } : record); }
+    async function digest(content) {
+        if (global.crypto?.subtle) {
+            return Array.from(new Uint8Array(await global.crypto.subtle.digest("SHA-256", content)), byte => byte.toString(16).padStart(2, "0")).join("");
+        }
+        // HTTP LAN pages may lack WebCrypto. Keep verification available without a new runtime dependency.
+        const k = [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2];
+        const h = new Uint32Array([0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]);
+        const bytes = new Uint8Array(content), words = new Uint32Array(64);
+        const length = Math.ceil((bytes.length + 9) / 64) * 64;
+        const rotate = (n, count) => (n >>> count) | (n << (32 - count));
+        const at = (index) => {
+            if (index < bytes.length)
+                return bytes[index];
+            if (index === bytes.length)
+                return 128;
+            if (index >= length - 8)
+                return Math.floor(bytes.length * 8 / Math.pow(256, length - 1 - index)) & 255;
+            return 0;
+        };
+        for (let offset = 0; offset < length; offset += 64) {
+            if (offset && offset % 262144 === 0)
+                await new Promise(resolve => setTimeout(resolve, 0));
+            for (let i = 0; i < 16; i++) {
+                const j = offset + i * 4;
+                words[i] = (at(j) << 24) | (at(j + 1) << 16) | (at(j + 2) << 8) | at(j + 3);
+            }
+            for (let i = 16; i < 64; i++) {
+                const x = words[i - 15], y = words[i - 2];
+                words[i] = words[i - 16] + (rotate(x, 7) ^ rotate(x, 18) ^ (x >>> 3)) + words[i - 7] + (rotate(y, 17) ^ rotate(y, 19) ^ (y >>> 10));
+            }
+            let [a, b, c, d, e, f, g, j] = h;
+            for (let i = 0; i < 64; i++) {
+                const t1 = (j + (rotate(e, 6) ^ rotate(e, 11) ^ rotate(e, 25)) + ((e & f) ^ (~e & g)) + k[i] + words[i]) >>> 0;
+                const t2 = ((rotate(a, 2) ^ rotate(a, 13) ^ rotate(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) >>> 0;
+                j = g;
+                g = f;
+                f = e;
+                e = (d + t1) >>> 0;
+                d = c;
+                c = b;
+                b = a;
+                a = (t1 + t2) >>> 0;
+            }
+            [a, b, c, d, e, f, g, j].forEach((value, index) => h[index] = (h[index] + value) >>> 0);
+        }
+        return Array.from(h, value => value.toString(16).padStart(8, "0")).join("");
+    }
     function sizeOf(content) {
         return content instanceof Blob ? content.size : typeof content === "string" ? content.length : content?.byteLength || 0;
     }
-    function available(record) { return Boolean(record && sizeOf(record.content) > 0); }
-    function put(id, content, mimeType) {
+    async function asBuffer(content) {
+        if (content instanceof Blob)
+            return content.arrayBuffer();
+        if (typeof content === "string")
+            return new TextEncoder().encode(content).buffer;
+        if (ArrayBuffer.isView(content))
+            return new Uint8Array(content.buffer, content.byteOffset, content.byteLength).slice().buffer;
+        return content;
+    }
+    async function verify(id, content) {
         const resource = definitions.find(item => item.id === id);
-        if (!resource || !content.byteLength)
-            return Promise.reject(new Error("Empty or unknown resource"));
+        return Boolean(resource && content?.byteLength && await digest(content) === resource.sha256);
+    }
+    async function read(id) {
+        let record = await transaction("readonly", store => store.get(id));
+        if (record instanceof Blob)
+            record = { id, content: record };
+        if (!record || !sizeOf(record.content))
+            return record;
+        record.validated = await verify(id, await asBuffer(record.content));
+        record.invalid = !record.validated;
+        return record;
+    }
+    function available(record) { return Boolean(record?.validated && sizeOf(record.content) > 0); }
+    async function put(id, content, mimeType) {
+        const resource = definitions.find(item => item.id === id);
+        if (!resource || !await verify(id, content))
+            throw new Error("ResourceIntegrityError: resource does not match the supported version");
         const record = { id, fileName: resource.fileName, content, mimeType, size: content.byteLength, updatedAt: Date.now() };
         return transaction("readwrite", store => store.keyPath ? store.put(record) : store.put(record, id));
     }
@@ -138,11 +207,12 @@
         const list = host.querySelector("ul");
         const input = host.querySelector("input");
         let states = new Map();
+        let damaged = new Set();
         let state = "checking", busy = false, errorKey = "", file = "", received = 0;
         let percent = null, refreshPromise = null;
         const words = {
-            zh: { title: "本地资源", checking: "检查中", ready: "已就绪", missing: "缺少资源", downloading: "下载中", importing: "导入中", error: "检查失败", cached: "已缓存", absent: "未缓存", hint: "处理时自动加载", download: "下载缺失资源", retry: "重试下载", import: "导入文件", check: "重新检查", details: "资源详情", downloadError: "下载或缓存写入失败，请检查网络及浏览器存储空间后重试，也可导入本地文件。", checkError: "无法访问浏览器缓存，请检查浏览器存储权限后重新检查。", importError: "导入失败，请选择详情中列出的资源文件并检查存储空间。" },
-            en: { title: "Local resources", checking: "Checking", ready: "Ready", missing: "Missing", downloading: "Downloading", importing: "Importing", error: "Check failed", cached: "cached", absent: "Missing", hint: "Loads automatically when needed", download: "Download missing resources", retry: "Retry download", import: "Import files", check: "Check again", details: "Resource details", downloadError: "Download or cache write failed. Check your connection and browser storage, then retry or import local files.", checkError: "Cannot access browser cache. Check storage permissions and try again.", importError: "Import failed. Choose the files listed in Resource details and check available storage." }
+            zh: { repair: "修复资源", damaged: "损坏或版本不符", title: "本地资源", checking: "检查中", ready: "已就绪", missing: "缺少资源", downloading: "下载中", importing: "导入中", error: "检查失败", cached: "已缓存", absent: "未缓存", hint: "处理时自动加载", download: "下载缺失资源", retry: "重试下载", import: "导入文件", check: "重新检查", details: "资源详情", downloadError: "下载或缓存写入失败，请检查网络及浏览器存储空间后重试，也可导入本地文件。", checkError: "无法访问浏览器缓存，请检查浏览器存储权限后重新检查。", importError: "导入失败。文件须与支持版本完全一致，请下载详情对应的原始文件，并检查存储空间。" },
+            en: { repair: "Repair resources", damaged: "Damaged or wrong version", title: "Local resources", checking: "Checking", ready: "Ready", missing: "Missing", downloading: "Downloading", importing: "Importing", error: "Check failed", cached: "cached", absent: "Missing", hint: "Loads automatically when needed", download: "Download missing resources", retry: "Retry download", import: "Import files", check: "Check again", details: "Resource details", downloadError: "Download or cache write failed. Check your connection and browser storage, then retry or import local files.", checkError: "Cannot access browser cache. Check storage permissions and try again.", importError: "Import failed. Files must exactly match the supported versions. Download the original files and check available storage." }
         };
         function render() {
             const w = words[document.documentElement.lang.startsWith("zh") ? "zh" : "en"];
@@ -152,7 +222,7 @@
             badge.textContent = w[state];
             host.dataset.state = state;
             summary.textContent = group + " · " + count + "/" + resources.length + " " + w.cached + (state === "ready" ? " · " + w.hint : "");
-            downloadButton.textContent = errorKey === "downloadError" ? w.retry : w.download;
+            downloadButton.textContent = damaged.size ? w.repair : errorKey === "downloadError" ? w.retry : w.download;
             downloadButton.hidden = state === "ready";
             downloadButton.disabled = busy || state === "checking" || state === "error";
             importButton.textContent = w.import;
@@ -175,7 +245,7 @@
                 const name = document.createElement("span");
                 name.textContent = item.fileName;
                 const status = document.createElement("span");
-                status.textContent = states.get(item.id) ? w.cached : w.absent;
+                status.textContent = states.get(item.id) ? w.cached : damaged.has(item.id) ? w.damaged : w.absent;
                 row.append(name, status);
                 list.append(row);
             });
@@ -191,6 +261,7 @@
                 try {
                     const records = await Promise.all(resources.map(item => read(item.id)));
                     states = new Map(resources.map((item, index) => [item.id, available(records[index])]));
+                    damaged = new Set(resources.filter((item, index) => records[index]?.invalid).map(item => item.id));
                     state = resources.every(item => states.get(item.id)) ? "ready" : "missing";
                     if (state === "ready" || errorKey === "checkError")
                         errorKey = "";

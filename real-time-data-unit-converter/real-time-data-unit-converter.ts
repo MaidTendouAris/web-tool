@@ -1,5 +1,6 @@
 (function () {
   "use strict";
+  const preferences = (window as any).WebToolsPreferences;
 
   var LANGUAGE_STORAGE_KEY = "web-tools-language";
   var THEME_STORAGE_KEY = "web-tools-theme";
@@ -168,8 +169,8 @@
   };
 
   var currentLanguage = resolveInitialLanguage();
-  var valueInput = document.getElementById("valueInput");
-  var unitSelect = document.getElementById("unitSelect");
+  var valueInput = document.getElementById("valueInput") as HTMLInputElement;
+  var unitSelect = document.getElementById("unitSelect") as HTMLSelectElement;
   var resultsEl = document.getElementById("results");
   var presetsEl = document.getElementById("presets");
   var storageStandardEl = document.getElementById("storageStandard");
@@ -181,22 +182,15 @@
   }
 
   function resolveInitialLanguage() {
-    var saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) || localStorage.getItem(LEGACY_LANGUAGE_STORAGE_KEY);
-    if (saved === "zh" || saved === "en") return saved;
-    var browserLanguage = (navigator.language || "").toLowerCase();
-    if (browserLanguage.indexOf("zh") === 0) return "zh";
-    if (browserLanguage.indexOf("en") === 0) return "en";
-    return "en";
+    return preferences.language();
   }
 
   function getSystemTheme() {
-    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    return preferences.systemTheme();
   }
 
   function resolveInitialTheme() {
-    var saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
-    if (saved === "dark" || saved === "light") return saved;
-    return getSystemTheme();
+    return preferences.theme();
   }
 
   function applyTheme(theme) {
@@ -237,7 +231,7 @@
     presetsEl.setAttribute("aria-label", t("presets"));
     toastEl.textContent = t("copied");
     document.querySelectorAll(".language button[data-lang]").forEach(function (button) {
-      button.classList.toggle("active", button.dataset.lang === language);
+      button.classList.toggle("active", (button as HTMLElement).dataset.lang === language);
     });
     render();
   }
@@ -276,7 +270,7 @@
     if (match) {
       state.unit = match.name;
       unitSelect.value = match.name;
-      valueInput.value = parsed.number;
+      valueInput.value = String(parsed.number);
     }
   }
 
@@ -292,7 +286,7 @@
     }
     valueInput.value = state.value;
     document.querySelectorAll(".mode-tabs button").forEach(function (button) {
-      button.classList.toggle("active", button.dataset.mode === mode);
+      button.classList.toggle("active", (button as HTMLElement).dataset.mode === mode);
     });
     render();
   }
@@ -332,7 +326,7 @@
   function renderStandard() {
     storageStandardEl.hidden = state.mode !== "storage";
     storageStandardEl.querySelectorAll("button").forEach(function (button) {
-      button.classList.toggle("active", button.dataset.standard === state.storageStandard);
+      button.classList.toggle("active", (button as HTMLElement).dataset.standard === state.storageStandard);
     });
   }
 
@@ -389,10 +383,11 @@
     showToast();
   }
 
+  let toastTimer = 0;
   function showToast() {
     toastEl.classList.add("show");
-    window.clearTimeout(showToast.timer);
-    showToast.timer = window.setTimeout(function () {
+    window.clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(function () {
       toastEl.classList.remove("show");
     }, 1300);
   }
@@ -459,15 +454,15 @@
 
   document.querySelectorAll(".mode-tabs button").forEach(function (button) {
     button.addEventListener("click", function () {
-      setMode(button.dataset.mode);
+      setMode((button as HTMLElement).dataset.mode);
     });
   });
 
   document.querySelectorAll(".language button[data-lang]").forEach(function (button) {
     button.addEventListener("click", function () {
-      var nextLanguage = button.dataset.lang;
+      var nextLanguage = (button as HTMLElement).dataset.lang;
       if (nextLanguage !== "zh" && nextLanguage !== "en") return;
-      localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
+      preferences.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
       applyLanguage(nextLanguage);
     });
   });
@@ -484,29 +479,28 @@
   });
 
   storageStandardEl.addEventListener("click", function (event) {
-    var button = event.target.closest("button[data-standard]");
+    var button = (event.target as Element).closest("button[data-standard]");
     if (!button) return;
-    state.storageStandard = button.dataset.standard;
+    state.storageStandard = (button as HTMLElement).dataset.standard;
     state.unit = state.storageStandard === "binary" ? "GiB" : "GB";
     render();
   });
 
   document.getElementById("themeButton").addEventListener("click", function () {
     var nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-    localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    preferences.setItem(THEME_STORAGE_KEY, nextTheme);
     applyTheme(nextTheme);
   });
 
   if (window.matchMedia) {
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (event) {
-      var saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
+      var saved = preferences.getItem(THEME_STORAGE_KEY) || preferences.getItem(LEGACY_THEME_STORAGE_KEY);
       if (saved === "dark" || saved === "light") return;
       applyTheme(event.matches ? "dark" : "light");
     });
   }
 
+  preferences.subscribe(() => { applyLanguage(resolveInitialLanguage()); applyTheme(resolveInitialTheme()); });
   applyTheme(resolveInitialTheme());
   applyLanguage(currentLanguage);
 })();
-
-export {};

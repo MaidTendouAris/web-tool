@@ -1405,3 +1405,5 @@ input[type="color"].wt-color::-moz-color-swatch {
 .wt-number-button::after { left: auto; right: 0; transform: translateY(3px); }
 .wt-number-button:hover::after,
 .wt-number-button:focus-visible::after { transform: translateY(0); }
+
+.wt-output-clear { display: block; margin-top: 12px; }

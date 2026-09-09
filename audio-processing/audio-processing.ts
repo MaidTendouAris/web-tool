@@ -1,5 +1,6 @@
 (function () {
   "use strict";
+  const preferences = (window as any).WebToolsPreferences;
 
   (window as any).WebToolsResources.createCard(document.getElementById("resourceCard"), ["ffmpeg-core-js", "ffmpeg-core-wasm"]);
 
@@ -271,18 +272,11 @@
   }
 
   function resolveInitialLanguage(): SupportedLanguage {
-    var saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) || localStorage.getItem(LEGACY_LANGUAGE_STORAGE_KEY);
-    if (saved === "zh" || saved === "en") return saved;
-    var browserLanguage = (navigator.language || "").toLowerCase();
-    if (browserLanguage.startsWith("zh")) return "zh";
-    if (browserLanguage.startsWith("en")) return "en";
-    return "en";
+    return preferences.language();
   }
 
   function resolveInitialTheme() {
-    var saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
-    if (saved === "dark" || saved === "light") return saved;
-    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    return preferences.theme();
   }
 
   function applyTheme(theme: string) {
@@ -913,7 +907,7 @@
           getCachedResource(FFMPEG_CORE_WASM_RESOURCE_ID)
         ]);
         checkCancelled();
-        if (!(window as any).WebToolsResources.available(records[0]) || !(window as any).WebToolsResources.available(records[1])) throw new Error(t("wasmNeedsCache"));
+        if (!(window as any).WebToolsResources.available(records[0]) || !(window as any).WebToolsResources.available(records[1])) throw new Error(records.some(record => record?.invalid) ? "ResourceIntegrityError" : t("wasmNeedsCache"));
         await client.load(records[0].content, records[1].content);
         checkCancelled();
         ffmpegCore = client;
@@ -961,6 +955,11 @@
     link.download = name;
     link.textContent = t("download") + " " + name;
     box.appendChild(link);
+    (window as any).WebToolsControls.addOutputClear(box, () => {
+      URL.revokeObjectURL(downloadUrl); downloadUrl = "";
+      box.textContent = t("noOutput"); box.dataset.hasOutput = "";
+      $("#summary").replaceChildren();
+    });
   }
 
   function showSummary(items: Array<{ label: string; value: string }>) {
@@ -1208,7 +1207,7 @@
       setStatus("failed");
       var message = (error && error.message) || String(error);
       appendLog(message);
-      $("#resultBox").textContent = message;
+      $("#resultBox").textContent = (window as any).WebToolsControls.describeError(error);
     } finally {
       if (workerClient) workerClient.terminate();
       workerClient = null;
@@ -1270,14 +1269,14 @@
     button.addEventListener("click", function () {
       var nextLanguage = button.dataset.lang;
       if (nextLanguage !== "zh" && nextLanguage !== "en") return;
-      localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
+      preferences.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
       applyLanguage(nextLanguage);
     });
   });
 
   $("#themeButton").addEventListener("click", function () {
     var nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-    localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    preferences.setItem(THEME_STORAGE_KEY, nextTheme);
     applyTheme(nextTheme);
     if (singleFile) void drawWaveform(singleFile);
   });
@@ -1313,11 +1312,12 @@
 
 
   window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener("change", function (event) {
-      var saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
+      var saved = preferences.getItem(THEME_STORAGE_KEY) || preferences.getItem(LEGACY_THEME_STORAGE_KEY);
     if (saved === "dark" || saved === "light") return;
     applyTheme(event.matches ? "dark" : "light");
   });
 
+  preferences.subscribe(() => { applyLanguage(resolveInitialLanguage()); applyTheme(resolveInitialTheme()); });
   applyTheme(resolveInitialTheme());
   applyLanguage(currentLanguage);
   syncDefaultArgs();

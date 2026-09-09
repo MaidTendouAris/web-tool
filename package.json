@@ -1,0 +1,17 @@
+{
+  "name": "web-tools",
+  "private": true,
+  "scripts": {
+    "check": "node tests/check.cjs",
+    "sync:js": "tsc --noEmit false",
+    "test:browser": "node tests/optimizations.cjs && node tests/resources.cjs",
+    "test:media": "node tests/media-processing.cjs",
+    "test:fixtures": "node tests/fetch-resources.cjs"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3",
+    "playwright": "1.62.1",
+    "pdf-lib": "1.17.1",
+    "jszip": "3.10.1"
+  }
+}

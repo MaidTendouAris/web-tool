@@ -1,4 +1,5 @@
 "use strict";
+const preferences = window.WebToolsPreferences;
 const LANGUAGE_TABLE = {
     zh: {
         htmlLang: "zh-CN",
@@ -173,15 +174,7 @@ let currentLanguage = resolveInitialLanguage();
 const cacheResourceStates = new Map();
 const cacheResourceDownloadProgress = new Map();
 function resolveInitialLanguage() {
-    const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) || localStorage.getItem(LEGACY_LANGUAGE_STORAGE_KEY);
-    if (saved === "zh" || saved === "en")
-        return saved;
-    const browserLanguage = (navigator.language || "").toLowerCase();
-    if (browserLanguage.startsWith("zh"))
-        return "zh";
-    if (browserLanguage.startsWith("en"))
-        return "en";
-    return "en";
+    return preferences.language();
 }
 function getText(key) {
     const languagePack = LANGUAGE_TABLE[currentLanguage];
@@ -240,16 +233,13 @@ function filterTools() {
     }
 }
 function getSystemTheme() {
-    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    return preferences.systemTheme();
 }
 function applyTheme(theme) {
     document.documentElement.dataset.theme = theme;
 }
 function resolveInitialTheme() {
-    const saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
-    if (saved === "dark" || saved === "light")
-        return saved;
-    return getSystemTheme();
+    return preferences.theme();
 }
 function supportsResourceCache() {
     return "indexedDB" in window;
@@ -449,7 +439,7 @@ document.querySelectorAll(".language button[data-lang]").forEach((button) => {
         const nextLanguage = button.dataset.lang;
         if (nextLanguage !== "zh" && nextLanguage !== "en")
             return;
-        localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
+        preferences.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
         applyLanguage(nextLanguage);
     });
 });
@@ -463,7 +453,7 @@ clearSearchButton?.addEventListener("click", () => {
 });
 themeButton?.addEventListener("click", () => {
     const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-    localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    preferences.setItem(THEME_STORAGE_KEY, nextTheme);
     applyTheme(nextTheme);
 });
 refreshResourcesButton?.addEventListener("click", async () => {
@@ -476,11 +466,12 @@ refreshResourcesButton?.addEventListener("click", async () => {
     }
 });
 window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
-    const saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
+    const saved = preferences.getItem(THEME_STORAGE_KEY) || preferences.getItem(LEGACY_THEME_STORAGE_KEY);
     if (saved === "dark" || saved === "light")
         return;
     applyTheme(event.matches ? "dark" : "light");
 });
+preferences.subscribe(() => { applyLanguage(resolveInitialLanguage()); applyTheme(resolveInitialTheme()); });
 applyTheme(resolveInitialTheme());
 applyLanguage(currentLanguage);
 refreshResourcePanel();

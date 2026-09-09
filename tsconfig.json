@@ -2,7 +2,10 @@
   "compilerOptions": {
     "allowJs": false,
     "checkJs": false,
-    "lib": ["DOM", "ES2020"],
+    "lib": [
+      "DOM",
+      "ES2020"
+    ],
     "module": "ES2020",
     "noEmit": true,
     "noImplicitAny": false,
@@ -19,6 +22,8 @@
     "image-to-pdf/**/*.ts",
     "image-processing/**/*.ts",
     "real-time-data-unit-converter/**/*.ts",
-    "video-processing/**/*.ts"
+    "video-processing/**/*.ts",
+    "shared-preferences.ts",
+    "password-generator/**/*.ts"
   ]
 }

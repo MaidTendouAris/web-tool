@@ -1,5 +1,6 @@
 (function () {
   "use strict";
+  const preferences = (window as any).WebToolsPreferences;
 
   type SupportedLanguage = "zh" | "en";
   type Mode = "password" | "passphrase";
@@ -118,22 +119,15 @@
   }
 
   function resolveInitialLanguage(): SupportedLanguage {
-    const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) || localStorage.getItem(LEGACY_LANGUAGE_STORAGE_KEY);
-    if (saved === "zh" || saved === "en") return saved;
-    const browserLanguage = (navigator.language || "").toLowerCase();
-    if (browserLanguage.startsWith("zh")) return "zh";
-    if (browserLanguage.startsWith("en")) return "en";
-    return "en";
+    return preferences.language();
   }
 
   function getSystemTheme(): "dark" | "light" {
-    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    return preferences.systemTheme();
   }
 
   function resolveInitialTheme(): "dark" | "light" {
-    const saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
-    if (saved === "dark" || saved === "light") return saved;
-    return getSystemTheme();
+    return preferences.theme();
   }
 
   function applyTheme(theme: "dark" | "light"): void {
@@ -371,21 +365,22 @@
     button.addEventListener("click", () => {
       const nextLanguage = button.dataset.lang;
       if (nextLanguage !== "zh" && nextLanguage !== "en") return;
-      localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
+      preferences.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
       applyLanguage(nextLanguage);
     });
   });
   $("#themeButton").addEventListener("click", () => {
     const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-    localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    preferences.setItem(THEME_STORAGE_KEY, nextTheme);
     applyTheme(nextTheme);
   });
   window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
-    const saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
+    const saved = preferences.getItem(THEME_STORAGE_KEY) || preferences.getItem(LEGACY_THEME_STORAGE_KEY);
     if (saved === "dark" || saved === "light") return;
     applyTheme(event.matches ? "dark" : "light");
   });
 
+  preferences.subscribe(() => { applyLanguage(resolveInitialLanguage()); applyTheme(resolveInitialTheme()); });
   applyTheme(resolveInitialTheme());
   syncMode();
   applyLanguage(currentLanguage);

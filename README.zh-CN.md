@@ -32,7 +32,7 @@ https://maidtendouaris.github.io/web-tools/
 
 音频和视频共用独立 Worker 中的 FFmpeg 引擎，以及共享进度条。界面显示加载、读取、处理、导出和结束状态，批量音频显示当前文件序号；处理中可取消。百分比依据媒体时间估算，变速会调整预期输出时长。无法确定时长（例如部分拼接或自定义时间滤镜）时显示不定进度；只有输出准备完成才显示 100%。
 
-支持 WORKERFS 的核心会按需读取输入文件，避免完整复制输入到内存；旧核心在 Worker 内回退到内存文件系统。任务结束、失败或取消后会销毁引擎，下次处理从本地缓存重新加载。输出仍需要浏览器内存，因此超大输出或高分辨率重编码仍可能失败。
+支持 WORKERFS 的核心会按需读取输入文件，避免完整复制输入到内存；引擎也保留缺少 WORKERFS 时在 Worker 内使用内存文件系统的回退路径。任务结束、失败或取消后会销毁引擎，下次处理从本地缓存重新加载。输出仍需要浏览器内存，因此超大输出或高分辨率重编码仍可能失败。
 
 批量音频 ZIP 使用分块校验和 Blob 组合，单文件继续直接下载。超过 32 MiB、超过 5 分钟或无法读取时长的音频跳过全量波形解码，仍可使用浏览器支持的播放预览和 FFmpeg 处理。
 
@@ -43,4 +43,8 @@ https://maidtendouaris.github.io/web-tools/
 本仓库自有源码使用 MIT 许可证。见 [LICENSE](./LICENSE)。
 
 通过资源管理加载的可选运行时文件，包括 FFmpeg.wasm 和 pdf-lib 资源，仍遵循其各自许可证。见
-[THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。
+[THIRD_PARTY_NOTICES.md](./docs/THIRD_PARTY_NOTICES.md)。
+
+## 开发验证
+
+运行 npm ci 和 npm run check 可执行全项目类型、普通脚本及 TS/JS 同步检查；用户使用页面仍无需构建。参见[测试说明](./tests/README.md)和[性能与资源管理说明](./docs/OPTIMIZATION.md)。

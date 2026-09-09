@@ -28,9 +28,11 @@
     function seconds(text: string) {
       return text.split(":").reduce(function (sum, part) { return sum * 60 + Number(part); }, 0);
     }
+    let recentErrors: string[] = [];
     function onLog(event: any) {
       if (!event || !event.message) return;
       if (logger) logger(event);
+      if (event.type === "stderr") { recentErrors.push(event.message); if (recentErrors.length > 8) recentErrors.shift(); }
       var duration = /Duration:\s*(\d+:\d+:\d+(?:\.\d+)?)/.exec(event.message);
       if (!expectedDuration && duration) expectedDuration = seconds(duration[1]) / durationScale;
       var time = /time=\s*(\d+:\d+:\d+(?:\.\d+)?)/.exec(event.message);
@@ -119,9 +121,10 @@
         if (unknown) { expectedDuration = -1; }
         core.reset();
         // ffprobe can leave process-wide log/stats settings behind in this core.
+        recentErrors = [];
         var code = core.exec.apply(core, ["-nostdin", "-y", "-loglevel", "info", "-stats"].concat(command));
         core.reset();
-        if (code !== 0) throw new Error("FFmpeg exited with code " + code);
+        if (code !== 0) throw new Error("FFmpeg exited with code " + code + "\n" + recentErrors.join("\n"));
         return;
       }
       throw new Error("Unknown media worker operation: " + method);

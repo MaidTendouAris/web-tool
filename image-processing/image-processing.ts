@@ -1,8 +1,9 @@
 (function () {
       "use strict";
+  const preferences = (window as any).WebToolsPreferences;
 
-      var $ = function (selector) { return document.querySelector(selector); };
-      var $$ = function (selector) { return Array.from(document.querySelectorAll(selector)); };
+      var $ = function (selector): any { return document.querySelector(selector); };
+      var $$ = function (selector): HTMLElement[] { return Array.from(document.querySelectorAll<HTMLElement>(selector)); };
       var sortable = (window as any).WebToolsSortable;
 
       var LANGUAGE_STORAGE_KEY = "web-tools-language";
@@ -63,6 +64,7 @@
           maxWidth: "最大宽度 px",
           maxHeight: "最大高度 px",
           restoreSize: "恢复原尺寸",
+          processing: "处理中…", encodeError: "导出失败，请减小输出尺寸后重试。", sizeGuard: "输出尺寸过大，已暂停处理。建议缩小尺寸后重试。", reduceSize: "缩小至建议尺寸",
           selectImageError: "请选择图片文件",
           readError: "文件读取失败",
           imageLoadError: "图片加载失败",
@@ -131,6 +133,7 @@
           maxWidth: "Max width px",
           maxHeight: "Max height px",
           restoreSize: "Restore original size",
+          processing: "Processing…", encodeError: "Export failed. Reduce the output dimensions and retry.", sizeGuard: "Output is too large. Reduce dimensions to continue.", reduceSize: "Use suggested dimensions",
           selectImageError: "Please choose an image file",
           readError: "File read failed",
           imageLoadError: "Image load failed",
@@ -150,12 +153,7 @@
       var currentLanguage = resolveInitialLanguage();
 
       function resolveInitialLanguage() {
-        var saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) || localStorage.getItem(LEGACY_LANGUAGE_STORAGE_KEY);
-        if (saved === "zh" || saved === "en") return saved;
-        var browserLanguage = (navigator.language || "").toLowerCase();
-        if (browserLanguage.indexOf("zh") === 0) return "zh";
-        if (browserLanguage.indexOf("en") === 0) return "en";
-        return "en";
+        return preferences.language();
       }
 
       function t(key) {
@@ -170,7 +168,7 @@
       function setButtonText(selector, key) {
         var element = $(selector);
         if (!element) return;
-        var nodes = Array.from(element.childNodes).reverse();
+        var nodes = Array.from(element.childNodes as NodeListOf<ChildNode>).reverse();
         var textNode = nodes.find(function (node) { return node.nodeType === Node.TEXT_NODE; });
         if (textNode) textNode.nodeValue = " " + t(key);
         else element.appendChild(document.createTextNode(t(key)));
@@ -189,7 +187,7 @@
       function setOptions(selector, keys) {
         var select = $(selector);
         if (!select) return;
-        Array.from(select.options).forEach(function (option, index) {
+        Array.from(select.options as HTMLOptionsCollection).forEach(function (option, index) {
           if (keys[index]) option.textContent = t(keys[index]);
         });
       }
@@ -204,7 +202,7 @@
         $("#imagePreviewClose").setAttribute("aria-label", t("closePreview"));
         $("#imagePreviewClose").setAttribute("title", t("closePreview"));
         document.querySelectorAll(".language button[data-lang]").forEach(function (button) {
-          button.classList.toggle("active", button.dataset.lang === language);
+          button.classList.toggle("active", (button as HTMLElement).dataset.lang === language);
         });
 
         setText("#homeText", "home");
@@ -258,7 +256,7 @@
       }
 
       function getSystemTheme() {
-        return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        return preferences.systemTheme();
       }
 
       function applyTheme(theme) {
@@ -266,9 +264,7 @@
       }
 
       function resolveInitialTheme() {
-        var saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
-        if (saved === "dark" || saved === "light") return saved;
-        return getSystemTheme();
+        return preferences.theme();
       }
 
       function formatBytes(bytes) {
@@ -290,7 +286,7 @@
         });
       }
 
-      function loadImage(file) {
+      function loadImage(file: File): Promise<{ file: File; img: HTMLImageElement; dataUrl: string }> {
         return new Promise(function (resolve, reject) {
           if (!file || !/^image\//.test(file.type)) {
             reject(new Error(t("selectImageError")));
@@ -302,17 +298,17 @@
             var img = new Image();
             img.onerror = function () { reject(new Error(t("imageLoadError"))); };
             img.onload = function () {
-              resolve({ file: file, img: img, dataUrl: reader.result });
+              resolve({ file: file, img: img, dataUrl: String(reader.result) });
             };
-            img.src = reader.result;
+            img.src = String(reader.result);
           };
           reader.readAsDataURL(file);
         });
       }
 
-      function canvasToBlob(canvas, mime, quality) {
-        return new Promise(function (resolve) {
-          canvas.toBlob(resolve, mime, quality);
+      function canvasToBlob(canvas: HTMLCanvasElement, mime: string, quality?: number): Promise<Blob> {
+        return new Promise(function (resolve, reject) {
+          canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error(t("encodeError"))), mime, quality);
         });
       }
 
@@ -401,7 +397,7 @@
         var target = event.target;
         var button = target && target.closest ? target.closest("button[data-tool]") : null;
         if (!button) return;
-        setTool(button.dataset.tool);
+        setTool((button as HTMLElement).dataset.tool);
       });
 
       var crop = {
@@ -437,6 +433,8 @@
         updateCrop();
       }
 
+      let cropRegion = { sx: 0, sy: 0, sw: 1, sh: 1 };
+      let cropLoadRevision = 0;
       function updateCrop() {
         if (!crop.img) return;
         var r = crop.rect;
@@ -456,10 +454,13 @@
         var sy = Math.round(r.y * scaleY);
         var sw = Math.max(1, Math.round(r.w * scaleX));
         var sh = Math.max(1, Math.round(r.h * scaleY));
+        if (crop.canvas) crop.canvas.width = crop.canvas.height = 0;
+        const previewScale = Math.min(1, 1200 / Math.max(sw, sh));
         var canvas = document.createElement("canvas");
-        canvas.width = sw;
-        canvas.height = sh;
-        canvas.getContext("2d").drawImage(crop.img, sx, sy, sw, sh, 0, 0, sw, sh);
+        canvas.width = Math.max(1, Math.round(sw * previewScale));
+        canvas.height = Math.max(1, Math.round(sh * previewScale));
+        canvas.getContext("2d").drawImage(crop.img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+        cropRegion = { sx, sy, sw, sh };
         crop.canvas = canvas;
         makePreviewOpenable(canvas);
 
@@ -555,23 +556,39 @@
       $("#aspectButtons").addEventListener("click", function (event) {
         var button = event.target.closest("button[data-ratio]");
         if (!button) return;
-        crop.ratio = button.dataset.ratio;
+        crop.ratio = (button as HTMLElement).dataset.ratio;
         $$("#aspectButtons button").forEach(function (item) { item.classList.toggle("active", item === button); });
         if (crop.img) resetCropRect();
       });
 
       $("#cropReset").addEventListener("click", resetCropRect);
 
-      $("#cropDownload").addEventListener("click", function () {
-        if (!crop.canvas) return;
-        canvasToBlob(crop.canvas, "image/png").then(function (blob) {
-          downloadBlob(blob, safeName(crop.file, "-crop", "image/png"));
-        });
-      });
+      async function exportCrop(reduce = false) {
+        const region = { ...cropRegion }, source = crop.img, file = crop.file;
+        const size = suggestedSize(region.sw, region.sh);
+        if (!reduce && (size.w !== region.sw || size.h !== region.sh)) {
+          showSizeGuard($("#cropOutputMeta"), region.sw, region.sh, () => void exportCrop(true));
+          return;
+        }
+        const canvas = document.createElement("canvas");
+        $("#cropDownload").disabled = true;
+        try {
+          canvas.width = reduce ? size.w : region.sw;
+          canvas.height = reduce ? size.h : region.sh;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) throw new Error(t("encodeError"));
+          ctx.drawImage(source, region.sx, region.sy, region.sw, region.sh, 0, 0, canvas.width, canvas.height);
+          downloadBlob(await canvasToBlob(canvas, "image/png"), safeName(file, "-crop", "image/png"));
+        } catch (_) { $("#cropOutputMeta").textContent = t("encodeError"); }
+        finally { canvas.width = canvas.height = 0; $("#cropDownload").disabled = !crop.img; }
+      }
+      $("#cropDownload").addEventListener("click", () => { if (crop.img) void exportCrop(); });
 
       setupUpload($("#cropUpload"), $("#cropFile"), function (files) {
         if (!files[0]) return;
+        const revision = ++cropLoadRevision;
         loadImage(files[0]).then(function (result) {
+          if (revision !== cropLoadRevision) return;
           crop.img = result.img;
           crop.file = result.file;
           var scale = Math.min(1, 760 / result.img.naturalWidth, 560 / result.img.naturalHeight);
@@ -766,8 +783,8 @@
         return Math.round(value * scale);
       }
 
-      function makeStitchCanvas(maxEdge) {
-        var layout = makeStitchLayout(maxEdge);
+      function makeStitchCanvas(maxEdge, savedLayout = null) {
+        var layout = savedLayout || makeStitchLayout(maxEdge);
         var settings = layout.settings;
         var scale = layout.scale;
 
@@ -852,6 +869,7 @@
         }
         var layout = makeStitchLayout(0);
         var canvas = makeStitchCanvas(stitch.previewMaxEdge);
+        if (stitch.canvas) stitch.canvas.width = stitch.canvas.height = 0;
         stitch.canvas = canvas;
         makePreviewOpenable(canvas);
         var preview = $("#stitchPreview");
@@ -897,13 +915,35 @@
         queueStitchPreview();
       });
 
+      async function exportStitch(maxEdge: number) {
+        const button = $("#stitchDownload");
+        button.disabled = true;
+        const settings = getStitchSettings();
+        const file = stitch.images[0]?.file;
+        const layout = makeStitchLayout(maxEdge);
+        const size = suggestedSize(layout.canvasW, layout.canvasH);
+        const ratio = Math.min(size.w / layout.canvasW, size.h / layout.canvasH);
+        layout.scale *= ratio; layout.canvasW = size.w; layout.canvasH = size.h;
+        let canvas: HTMLCanvasElement | null = null;
+        try {
+          await new Promise(resolve => setTimeout(resolve, 0));
+          canvas = makeStitchCanvas(maxEdge, layout);
+          const blob = await canvasToBlob(canvas, settings.format, .92);
+          downloadBlob(blob, safeName(file, "-stitch", settings.format));
+        } catch (_) { $("#stitchMeta").textContent = t("encodeError"); }
+        finally { if (canvas) canvas.width = canvas.height = 0; button.disabled = !stitch.images.length; }
+      }
       $("#stitchDownload").addEventListener("click", function () {
         if (stitch.images.length === 0) return;
-        var settings = getStitchSettings();
-        var outputCanvas = makeStitchCanvas(0);
-        canvasToBlob(outputCanvas, settings.format, .92).then(function (blob) {
-          downloadBlob(blob, safeName(stitch.images[0] && stitch.images[0].file, "-stitch", settings.format));
-        });
+        const layout = makeStitchLayout(0);
+        const size = suggestedSize(layout.fullW, layout.fullH);
+        if (size.w !== layout.fullW || size.h !== layout.fullH) {
+          showSizeGuard($("#stitchMeta"), layout.fullW, layout.fullH, () => {
+            void exportStitch(Math.max(size.w, size.h));
+          });
+          return;
+        }
+        void exportStitch(0);
       });
 
       var compress = {
@@ -913,6 +953,26 @@
         blob: null,
         timer: 0
       };
+
+      function suggestedSize(w: number, h: number) {
+        const scale = Math.min(1, 8192 / Math.max(w, h), Math.sqrt(16000000 / (w * h)));
+        return { w: Math.max(1, Math.floor(w * scale)), h: Math.max(1, Math.floor(h * scale)) };
+      }
+      function showSizeGuard(host: HTMLElement, w: number, h: number, reduce: () => void) {
+        host.replaceChildren();
+        const text = document.createElement("p");
+        text.textContent = t("sizeGuard") + " " + w + " × " + h + " · " + Math.ceil(w * h * 4 / 1048576) + " MiB RGBA";
+        const button = document.createElement("button");
+        button.type = "button"; button.className = "btn"; button.textContent = t("reduceSize");
+        button.onclick = reduce;
+        host.append(text, button);
+      }
+      let compressRevision = 0, compressLoadRevision = 0;
+      function invalidateCompress() {
+        compressRevision++;
+        compress.blob = null;
+        $("#compressDownload").disabled = true;
+      }
 
       function getCompressedSize() {
         var maxW = Math.max(1, Number($("#maxWidth").value) || compress.img.naturalWidth);
@@ -926,13 +986,26 @@
 
       function updateCompress() {
         if (!compress.img) return;
+        invalidateCompress();
+        const revision = compressRevision;
+        const sourceFile = compress.file;
         var size = getCompressedSize();
+        const suggested = suggestedSize(size.w, size.h);
+        if (suggested.w !== size.w || suggested.h !== size.h) {
+          showSizeGuard($("#compressOutputMeta"), size.w, size.h, () => {
+            $("#maxWidth").value = suggested.w; $("#maxHeight").value = suggested.h; updateCompress();
+          });
+          return;
+        }
+        $("#compressOutputMeta").textContent = t("processing");
         var format = $("#compressFormat").value;
         var quality = Number($("#compressQuality").value) / 100;
         var canvas = document.createElement("canvas");
+        try {
         canvas.width = size.w;
         canvas.height = size.h;
         var ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error(t("encodeError"));
         if (format === "image/jpeg") {
           ctx.fillStyle = "#ffffff";
           ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -940,26 +1013,39 @@
         ctx.drawImage(compress.img, 0, 0, size.w, size.h);
         compress.canvas = canvas;
         canvasToBlob(canvas, format, quality).then(function (blob) {
+          if (revision !== compressRevision) return;
           compress.blob = blob;
           setPreviewImage($("#compressPreview"), blob);
           $("#compressDownload").disabled = false;
-          var saved = compress.file.size > 0 ? (1 - blob.size / compress.file.size) * 100 : 0;
+          var saved = sourceFile.size > 0 ? (1 - blob.size / sourceFile.size) * 100 : 0;
           $("#compressOutputMeta").innerHTML = [
             "<span>" + t("output") + " <strong>" + size.w + " x " + size.h + " px</strong></span>",
             "<span>" + t("size") + " <strong>" + formatBytes(blob.size) + "</strong></span>",
             "<span>" + t("change") + " <strong>" + saved.toFixed(1) + "%</strong></span>"
           ].join("");
-        });
+        }).catch(function () {
+          if (revision === compressRevision) $("#compressOutputMeta").textContent = t("encodeError");
+        }).finally(function () { canvas.width = canvas.height = 0; if (compress.canvas === canvas) compress.canvas = null; });
+        } catch (_) {
+          canvas.width = canvas.height = 0; compress.canvas = null;
+          $("#compressOutputMeta").textContent = t("encodeError");
+        }
       }
 
       function queueCompress() {
+        invalidateCompress();
         clearTimeout(compress.timer);
         compress.timer = setTimeout(updateCompress, 120);
       }
 
       setupUpload($("#compressUpload"), $("#compressFile"), function (files) {
         if (!files[0]) return;
+        const loadRevision = ++compressLoadRevision;
+        invalidateCompress();
+        compress.img = null; compress.file = null;
+        clearTimeout(compress.timer);
         loadImage(files[0]).then(function (result) {
+          if (loadRevision !== compressLoadRevision) return;
           compress.img = result.img;
           compress.file = result.file;
           $("#maxWidth").value = result.img.naturalWidth;
@@ -971,7 +1057,7 @@
           ].join("");
           updateCompress();
         }).catch(function (error) {
-          alert(error.message);
+          if (loadRevision === compressLoadRevision) $("#compressMeta").textContent = (window as any).WebToolsControls.describeError(error);
         });
       });
 
@@ -997,16 +1083,16 @@
 
       document.querySelectorAll(".language button[data-lang]").forEach(function (button) {
         button.addEventListener("click", function () {
-          var nextLanguage = button.dataset.lang;
+          var nextLanguage = (button as HTMLElement).dataset.lang;
           if (nextLanguage !== "zh" && nextLanguage !== "en") return;
-          localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
+          preferences.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
           applyLanguage(nextLanguage);
         });
       });
 
       $("#themeButton").addEventListener("click", function () {
         var nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-        localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+        preferences.setItem(THEME_STORAGE_KEY, nextTheme);
         applyTheme(nextTheme);
       });
 
@@ -1020,12 +1106,13 @@
 
       if (window.matchMedia) {
         window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (event) {
-          var saved = localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
+          var saved = preferences.getItem(THEME_STORAGE_KEY) || preferences.getItem(LEGACY_THEME_STORAGE_KEY);
           if (saved === "dark" || saved === "light") return;
           applyTheme(event.matches ? "dark" : "light");
         });
       }
 
+      preferences.subscribe(() => { applyLanguage(resolveInitialLanguage()); applyTheme(resolveInitialTheme()); });
       applyTheme(resolveInitialTheme());
       applyLanguage(currentLanguage);
     })();

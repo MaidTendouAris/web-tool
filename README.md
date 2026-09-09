@@ -36,7 +36,7 @@ Audio, video, and PDF pages check cached resources automatically. Their Local re
 
 Audio and video share a dedicated FFmpeg Worker and a shared progress component. The UI reports loading, reading, processing, export, and terminal states, with a current-file count for audio batches and a cancel button. Percentages are estimates based on media time, adjusted for speed changes. Unknown durations (including some concatenation or custom timestamp filters) use indeterminate progress. Only a prepared output reaches 100%.
 
-Cores with WORKERFS read input files on demand without copying the whole input into memory. Older cores fall back to an in-worker memory filesystem. The engine is terminated after success, failure, or cancellation; subsequent tasks reload it from the local cache. Outputs still require browser memory, so very large outputs or demanding re-encoding can still fail.
+Cores with WORKERFS read input files on demand without copying the whole input into memory. The engine also has an in-worker memory-filesystem fallback for cores without WORKERFS. The engine is terminated after success, failure, or cancellation; subsequent tasks reload it from the local cache. Outputs still require browser memory, so very large outputs or demanding re-encoding can still fail.
 
 Audio ZIP batches use chunked checksums and Blob composition; single outputs remain direct downloads. Full waveform decoding is skipped for audio over 32 MiB, over five minutes, or with an unknown duration. Browser-supported playback and FFmpeg processing remain available.
 
@@ -46,4 +46,8 @@ See [media regression tests](tests/README.md) for development checks.
 
 This repository's own source code is licensed under the MIT License. See [LICENSE](./LICENSE).
 
-Optional runtime files loaded through Resource Management, including FFmpeg.wasm and pdf-lib assets, remain governed by their own licenses. See [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
+Optional runtime files loaded through Resource Management, including FFmpeg.wasm and pdf-lib assets, remain governed by their own licenses. See [THIRD_PARTY_NOTICES.md](./docs/THIRD_PARTY_NOTICES.md).
+
+## Development
+
+Run npm ci and npm run check for full type, classic-script and TS/JS parity checks. User-facing pages still require no build. See [test instructions](./tests/README.md) and [performance and resource notes](./docs/OPTIMIZATION.md).
